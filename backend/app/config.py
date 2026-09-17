@@ -10,8 +10,11 @@ class Config:
     """Application configuration."""
     SECRET_KEY = os.environ.get("SECRET_KEY", "threatlens-dev-key-change-in-production")
     
-    # Database
-    DATABASE_PATH = os.path.join(BASE_DIR, "threatlens.db")
+    # Database path — use /tmp on Vercel serverless environment
+    if os.environ.get("VERCEL"):
+        DATABASE_PATH = os.path.join("/tmp", "threatlens.db")
+    else:
+        DATABASE_PATH = os.path.join(BASE_DIR, "threatlens.db")
     
     # Model paths
     MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
@@ -27,7 +30,7 @@ class Config:
     MAX_CSV_ROWS = 50000
     
     # CORS
-    CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    CORS_ORIGINS = ["*"]
     
     # Alert thresholds (configurable)
     ALERT_THRESHOLD = 0.50
