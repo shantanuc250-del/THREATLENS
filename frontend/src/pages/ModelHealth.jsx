@@ -3,10 +3,10 @@ import { Activity, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-reac
 import { getModelDrift, getModelInfo } from '../services/api';
 
 const STATUS_CONFIG = {
-  STABLE: { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Stable' },
-  WARNING: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Warning' },
-  DRIFT_DETECTED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Drift Detected' },
-  UNKNOWN: { icon: Activity, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20', label: 'Unknown' },
+  STABLE: { icon: CheckCircle, color: 'text-ok', bg: 'bg-ok-soft', border: 'border-ok-soft', label: 'Stable' },
+  WARNING: { icon: AlertTriangle, color: 'text-warn', bg: 'bg-warn-soft', border: 'border-warn-soft', label: 'Warning' },
+  DRIFT_DETECTED: { icon: XCircle, color: 'text-danger', bg: 'bg-danger-soft', border: 'border-danger-soft', label: 'Drift Detected' },
+  UNKNOWN: { icon: Activity, color: 'text-muted', bg: 'bg-card-hover', border: 'border-line', label: 'Unknown' },
 };
 
 export default function ModelHealth() {
@@ -37,10 +37,10 @@ export default function ModelHealth() {
   return (
     <div className="animate-fadeIn space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-hi flex items-center gap-2">
           <Activity size={24} /> Model Health
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-muted mt-1">
           Monitor model performance and detect drift over time
         </p>
       </div>
@@ -52,7 +52,7 @@ export default function ModelHealth() {
           <h2 className={`text-xl font-bold ${status.color}`}>
             Model Status: {status.label}
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-muted mt-1">
             {drift?.monitoring_type === 'dataset_based'
               ? 'Simulation / Dataset-based drift monitoring'
               : 'Basic model health monitoring'
@@ -64,7 +64,7 @@ export default function ModelHealth() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Model Info */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Model Information</h3>
+          <h3 className="text-sm font-semibold text-hi mb-4">Model Information</h3>
           <div className="space-y-3">
             {[
               ['Model Name', modelInfo?.model_name || 'ThreatLens Random Forest'],
@@ -75,9 +75,9 @@ export default function ModelHealth() {
               ['Features', modelInfo?.n_features || 'N/A'],
               ['Status', modelInfo?.status === 'loaded' ? 'Active' : 'Not Loaded'],
             ].map(([label, value], i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-[#1e293b]">
-                <span className="text-xs text-slate-500">{label}</span>
-                <span className="text-sm text-slate-300 font-mono">{value}</span>
+              <div key={i} className="flex items-center justify-between py-2 border-b border-line">
+                <span className="text-xs text-faint">{label}</span>
+                <span className="text-sm text-body font-mono">{value}</span>
               </div>
             ))}
           </div>
@@ -85,23 +85,23 @@ export default function ModelHealth() {
 
         {/* Metrics Summary */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Current Metrics</h3>
+          <h3 className="text-sm font-semibold text-hi mb-4">Current Metrics</h3>
           {modelInfo?.metrics_summary ? (
             <div className="space-y-3">
               {Object.entries(modelInfo.metrics_summary).map(([key, value], i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[#1e293b]">
-                  <span className="text-xs text-slate-500 uppercase">{key.replace('_', ' ')}</span>
+                <div key={i} className="flex items-center justify-between py-2 border-b border-line">
+                  <span className="text-xs text-faint uppercase">{key.replace('_', ' ')}</span>
                   <div className="flex items-center gap-3">
-                    <div className="w-24 bg-[#0d1117] rounded-full h-2 overflow-hidden">
+                    <div className="w-24 bg-surface rounded-full h-2 overflow-hidden">
                       <div className={`h-full rounded-full ${
                         key === 'fpr'
-                          ? value < 0.05 ? 'bg-emerald-400' : value < 0.1 ? 'bg-amber-400' : 'bg-red-400'
-                          : value > 0.8 ? 'bg-emerald-400' : value > 0.6 ? 'bg-amber-400' : 'bg-red-400'
+                          ? value < 0.05 ? 'bg-ok-dot' : value < 0.1 ? 'bg-warn-dot' : 'bg-danger-dot'
+                          : value > 0.8 ? 'bg-ok-dot' : value > 0.6 ? 'bg-warn-dot' : 'bg-danger-dot'
                       }`}
                         style={{width: `${Math.min(key === 'fpr' ? (1 - value) * 100 : value * 100, 100)}%`}}
                       />
                     </div>
-                    <span className="text-sm text-white font-mono w-16 text-right">
+                    <span className="text-sm text-hi font-mono w-16 text-right">
                       {(value * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -109,13 +109,13 @@ export default function ModelHealth() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No metrics available</p>
+            <p className="text-sm text-faint">No metrics available</p>
           )}
         </div>
 
         {/* Drift Details */}
         <div className="lg:col-span-2 glass-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Feature Distribution Analysis</h3>
+          <h3 className="text-sm font-semibold text-hi mb-4">Feature Distribution Analysis</h3>
           {drift?.feature_details?.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -145,7 +145,7 @@ export default function ModelHealth() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-slate-500 text-center py-8">
+            <p className="text-sm text-faint text-center py-8">
               No detailed feature analysis available. Train the model with reference data for drift monitoring.
             </p>
           )}
@@ -154,27 +154,27 @@ export default function ModelHealth() {
 
       {/* Explanation */}
       <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-hi mb-3 flex items-center gap-2">
           <Info size={16} /> Why Monitor Model Health?
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-400">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted">
           <div>
-            <h4 className="text-slate-300 font-semibold mb-1">Concept Drift</h4>
+            <h4 className="text-body font-semibold mb-1">Concept Drift</h4>
             <p>Network behavior changes over time. New attack patterns emerge, traffic patterns shift. A model trained on old data may lose effectiveness.</p>
           </div>
           <div>
-            <h4 className="text-slate-300 font-semibold mb-1">Data Drift</h4>
+            <h4 className="text-body font-semibold mb-1">Data Drift</h4>
             <p>Input feature distributions may change. If incoming traffic differs significantly from training data, predictions become unreliable.</p>
           </div>
           <div>
-            <h4 className="text-slate-300 font-semibold mb-1">Retraining</h4>
+            <h4 className="text-body font-semibold mb-1">Retraining</h4>
             <p>Regular retraining on recent data helps maintain model accuracy. Monitor metrics and retrain when performance degrades below acceptable thresholds.</p>
           </div>
         </div>
       </div>
 
       {drift?.note && (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-300">
+        <div className="bg-warn-soft border border-warn-soft rounded-lg p-3 text-xs text-warn">
           <Info size={14} className="inline mr-2" />
           {drift.note}
         </div>

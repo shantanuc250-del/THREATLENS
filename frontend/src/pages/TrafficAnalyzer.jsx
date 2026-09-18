@@ -92,23 +92,23 @@ export default function TrafficAnalyzer() {
   return (
     <div className="animate-fadeIn space-y-6 w-full max-w-full min-w-0">
       {/* Header */}
-      <div className="border-b border-[#2a3550] pb-4">
-        <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Search size={22} className="text-cyan-400" /> Network Traffic Analyzer
+      <div className="border-b border-line pb-4">
+        <h1 className="text-xl font-bold text-hi tracking-tight flex items-center gap-2">
+          <Search size={22} className="text-brand-2" /> Network Traffic Analyzer
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-muted mt-1">
           Perform batch CSV traffic classification or inspect single network connection telemetry.
         </p>
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex gap-2 bg-[#0d1117] p-1.5 rounded-lg border border-[#2a3550] w-fit">
+      <div className="flex gap-2 bg-surface p-1.5 rounded-lg border border-line w-fit">
         <button
           onClick={() => setTab('csv')}
           className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
             tab === 'csv'
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-brand-soft text-brand border border-brand-soft shadow-sm'
+              : 'text-muted hover:text-body'
           }`}
         >
           CSV Batch Upload
@@ -117,8 +117,8 @@ export default function TrafficAnalyzer() {
           onClick={() => setTab('single')}
           className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${
             tab === 'single'
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-brand-soft text-brand border border-brand-soft shadow-sm'
+              : 'text-muted hover:text-body'
           }`}
         >
           Manual Single Entry
@@ -126,7 +126,7 @@ export default function TrafficAnalyzer() {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-semibold text-red-400">
+        <div className="p-3 bg-danger-soft border border-danger-soft rounded-lg text-xs font-semibold text-danger">
           {error}
         </div>
       )}
@@ -137,13 +137,13 @@ export default function TrafficAnalyzer() {
           <div className="glass-card p-6">
             <div
               onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-[#2a3550] rounded-xl p-8 text-center cursor-pointer hover:border-blue-500/50 transition-colors bg-[#0d1117]/50"
+              className="border-2 border-dashed border-line rounded-xl p-8 text-center cursor-pointer hover:border-line-strong transition-colors bg-app-2"
             >
-              <Upload size={36} className="mx-auto text-slate-400 mb-3" />
-              <p className="text-sm text-slate-200 font-semibold">
+              <Upload size={36} className="mx-auto text-muted mb-3" />
+              <p className="text-sm text-body font-semibold">
                 {csvFile ? csvFile.name : 'Click or drop network traffic CSV file'}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-faint mt-1">
                 Supports NSL-KDD dataset format or CSV with network telemetry columns.
               </p>
               <input
@@ -156,8 +156,8 @@ export default function TrafficAnalyzer() {
             </div>
             {csvFile && (
               <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2 text-xs text-slate-300 font-mono">
-                  <FileText size={16} className="text-blue-400" />
+                <div className="flex items-center gap-2 text-xs text-body font-mono">
+                  <FileText size={16} className="text-brand" />
                   {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
                 </div>
                 <button onClick={handleCSVUpload} disabled={loading} className="btn-primary text-xs py-2">
@@ -178,16 +178,16 @@ export default function TrafficAnalyzer() {
                   { label: 'Attack Percentage', value: `${csvResults.summary.attack_percentage}%`, color: 'orange' },
                 ].map((kpi, i) => (
                   <div key={i} className={`kpi-card ${kpi.color}`}>
-                    <p className="text-xs text-slate-400 uppercase font-medium">{kpi.label}</p>
-                    <p className="text-2xl font-bold text-white mt-1">{kpi.value}</p>
+                    <p className="text-xs text-muted uppercase font-medium">{kpi.label}</p>
+                    <p className="text-2xl font-bold text-hi mt-1">{kpi.value}</p>
                   </div>
                 ))}
               </div>
 
               <div className="glass-card overflow-hidden">
-                <div className="p-4 border-b border-[#2a3550] flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">
-                    Prediction Summary Results {csvResults.truncated && <span className="text-xs text-slate-500 ml-2">(showing top 500)</span>}
+                <div className="p-4 border-b border-line flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-hi">
+                    Prediction Summary Results {csvResults.truncated && <span className="text-xs text-faint ml-2">(showing top 500)</span>}
                   </h3>
                 </div>
                 <div className="overflow-x-auto max-h-96">
@@ -208,7 +208,7 @@ export default function TrafficAnalyzer() {
                           <td className="font-mono text-xs">{r.src_bytes}</td>
                           <td className="font-mono text-xs">{r.dst_bytes}</td>
                           <td>
-                            <span className={r.prediction === 1 ? 'text-red-400 font-bold text-xs' : 'text-emerald-400 font-bold text-xs'}>
+                            <span className={r.prediction === 1 ? 'text-danger font-bold text-xs' : 'text-ok font-bold text-xs'}>
                               {r.label}
                             </span>
                           </td>
@@ -232,8 +232,8 @@ export default function TrafficAnalyzer() {
       {/* Manual Single Entry Tab */}
       {tab === 'single' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between bg-[#0d1117] p-3 rounded-lg border border-[#2a3550]">
-            <span className="text-xs text-slate-400 font-medium">Telemetry Presets:</span>
+          <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-line">
+            <span className="text-xs text-muted font-medium">Telemetry Presets:</span>
             <div className="flex gap-2">
               <button
                 onClick={() => setSingleForm(QUICK_FILL_PRESETS.normal)}
@@ -243,7 +243,7 @@ export default function TrafficAnalyzer() {
               </button>
               <button
                 onClick={() => setSingleForm(QUICK_FILL_PRESETS.suspicious)}
-                className="btn-secondary text-xs px-3 py-1.5 text-amber-400 hover:text-amber-300"
+                className="btn-secondary text-xs px-3 py-1.5 text-warn hover:text-warn"
               >
                 Load Attack Pattern
               </button>
@@ -251,7 +251,7 @@ export default function TrafficAnalyzer() {
           </div>
 
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold text-white mb-4 border-b border-[#2a3550] pb-2">
+            <h3 className="text-sm font-semibold text-hi mb-4 border-b border-line pb-2">
               Categorical Network Parameters
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -261,9 +261,9 @@ export default function TrafficAnalyzer() {
                 ['flag', ['SF', 'S0', 'REJ', 'RSTR', 'RSTO', 'S1', 'S2', 'S3', 'OTH', 'SH']]
               ].map(([field, opts]) => (
                 <div key={field}>
-                  <label className="text-xs text-slate-400 block mb-1 font-medium">{field}</label>
+                  <label className="text-xs text-muted block mb-1 font-medium">{field}</label>
                   <select
-                    className="input-field text-xs bg-[#0d1117]"
+                    className="input-field text-xs bg-surface"
                     value={singleForm[field] || ''}
                     onChange={e => updateField(field, e.target.value)}
                   >
@@ -273,19 +273,19 @@ export default function TrafficAnalyzer() {
               ))}
             </div>
 
-            <h3 className="text-sm font-semibold text-white mb-4 border-b border-[#2a3550] pb-2">
+            <h3 className="text-sm font-semibold text-hi mb-4 border-b border-line pb-2">
               Continuous Telemetry Features
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {numericFields.map(field => (
                 <div key={field}>
-                  <label className="text-[0.65rem] text-slate-400 block mb-1 truncate font-mono" title={field}>
+                  <label className="text-[0.65rem] text-muted block mb-1 truncate font-mono" title={field}>
                     {field}
                   </label>
                   <input
                     type="number"
                     step="any"
-                    className="input-field text-xs font-mono bg-[#0d1117] py-1 px-2"
+                    className="input-field text-xs font-mono bg-surface py-1 px-2"
                     value={singleForm[field] ?? 0}
                     onChange={e => updateField(field, parseFloat(e.target.value) || 0)}
                   />
@@ -302,27 +302,27 @@ export default function TrafficAnalyzer() {
 
           {/* Single Prediction Output Result */}
           {singleResult && (
-            <div className="glass-card p-6 space-y-4 border-l-4 border-l-blue-500">
-              <h3 className="text-sm font-semibold text-white border-b border-[#2a3550] pb-2">
+            <div className="glass-card p-6 space-y-4 border-l-4 border-l-brand">
+              <h3 className="text-sm font-semibold text-hi border-b border-line pb-2">
                 ML Inference Output
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#0d1117] p-3.5 rounded-lg border border-[#2a3550] text-center">
-                  <p className="text-xs text-slate-400">Class Label</p>
-                  <p className={`text-xl font-bold mt-1 ${singleResult.prediction === 1 ? 'text-red-400' : 'text-emerald-400'}`}>
+                <div className="bg-surface p-3.5 rounded-lg border border-line text-center">
+                  <p className="text-xs text-muted">Class Label</p>
+                  <p className={`text-xl font-bold mt-1 ${singleResult.prediction === 1 ? 'text-danger' : 'text-ok'}`}>
                     {singleResult.label}
                   </p>
                 </div>
 
-                <div className="bg-[#0d1117] p-3.5 rounded-lg border border-[#2a3550] text-center">
-                  <p className="text-xs text-slate-400">Attack Probability</p>
-                  <p className="text-xl font-bold text-white font-mono mt-1">
+                <div className="bg-surface p-3.5 rounded-lg border border-line text-center">
+                  <p className="text-xs text-muted">Attack Probability</p>
+                  <p className="text-xl font-bold text-hi font-mono mt-1">
                     {(singleResult.attack_probability * 100).toFixed(1)}%
                   </p>
                 </div>
 
-                <div className="bg-[#0d1117] p-3.5 rounded-lg border border-[#2a3550] text-center">
-                  <p className="text-xs text-slate-400">Derived Severity</p>
+                <div className="bg-surface p-3.5 rounded-lg border border-line text-center">
+                  <p className="text-xs text-muted">Derived Severity</p>
                   <div className="mt-1">
                     <span className={`badge badge-${singleResult.severity?.toLowerCase()}`}>
                       {singleResult.severity}
@@ -330,9 +330,9 @@ export default function TrafficAnalyzer() {
                   </div>
                 </div>
 
-                <div className="bg-[#0d1117] p-3.5 rounded-lg border border-[#2a3550] text-center">
-                  <p className="text-xs text-slate-400">Recommended Disposition</p>
-                  <p className="text-xs font-bold text-amber-400 mt-1">
+                <div className="bg-surface p-3.5 rounded-lg border border-line text-center">
+                  <p className="text-xs text-muted">Recommended Disposition</p>
+                  <p className="text-xs font-bold text-warn mt-1">
                     {singleResult.prediction === 1 ? 'SOC INVESTIGATION REQUIRED' : 'No Action Required'}
                   </p>
                 </div>
@@ -340,20 +340,20 @@ export default function TrafficAnalyzer() {
 
               {singleResult.feature_importances?.length > 0 && (
                 <div className="pt-2">
-                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  <h4 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
                     Key Influential Features
                   </h4>
                   <div className="space-y-2">
                     {singleResult.feature_importances.slice(0, 6).map((fi, i) => (
                       <div key={i} className="flex items-center gap-3 text-xs">
-                        <span className="text-slate-300 w-36 text-right font-mono truncate">{fi.feature}</span>
-                        <div className="flex-1 bg-[#0d1117] rounded-full h-2 border border-[#2a3550] overflow-hidden">
+                        <span className="text-body w-36 text-right font-mono truncate">{fi.feature}</span>
+                        <div className="flex-1 bg-surface rounded-full h-2 border border-line overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
+                            className="h-full bg-brand-gradient rounded-full"
                             style={{ width: `${Math.min(fi.importance * 400, 100)}%` }}
                           />
                         </div>
-                        <span className="text-slate-400 font-mono w-12 text-right">
+                        <span className="text-muted font-mono w-12 text-right">
                           {(fi.importance * 100).toFixed(1)}%
                         </span>
                       </div>

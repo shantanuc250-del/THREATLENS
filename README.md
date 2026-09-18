@@ -84,3 +84,45 @@ ThreatLens is a **decision-support platform** designed for security analysts:
 - It **NEVER** automatically blocks IP addresses or terminates active network connections.
 - It **NEVER** performs offensive actions against real systems.
 - Machine learning predictions are probabilistic indicators to assist SOC analysts in triage.
+
+---
+
+## Interface
+
+### Routes
+
+| Route | Page |
+|---|---|
+| `/` | Public landing page (no console chrome) |
+| `/dashboard` | Executive SOC dashboard |
+| `/analyzer` | Network traffic analyzer |
+| `/alerts`, `/alerts/:id` | Alert queue and investigation view |
+| `/model` | Model performance analytics |
+| `/health` | Model health and drift monitor |
+| `/settings` | System info and appearance |
+
+### Themes
+
+The UI ships with four themes, switchable from the header dropdown or from
+**Settings → Appearance**:
+
+| Theme | Description |
+|---|---|
+| `midnight` | Default SOC blue, dark |
+| `obsidian` | Pure black, green terminal accents |
+| `aurora` | Violet night-shift palette |
+| `daylight` | Light, high contrast |
+
+The choice is stored in `localStorage` under `threatlens.theme` and falls back to
+the OS `prefers-color-scheme` setting on first visit. An inline script in
+`index.html` applies it before first paint to avoid a flash of the wrong palette.
+
+Every colour in the app comes from a CSS custom property defined in
+`src/index.css`; themes work by swapping those tokens on `<html data-theme>`.
+Charts are the one exception — Recharts needs literal colour strings, so
+components use the `useThemeTokens` hook from `src/theme/ThemeContext.jsx` to read
+the live computed values.
+
+**Adding a theme:** add a `[data-theme="yourname"]` block in `src/index.css`
+defining the same token set, then append an entry to the `THEMES` array in
+`src/theme/ThemeContext.jsx`. Nothing else needs to change.

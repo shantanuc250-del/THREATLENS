@@ -36,10 +36,10 @@ export default function Alerts() {
     <div className="animate-fadeIn space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-hi flex items-center gap-2">
             <Bell size={24} /> Alerts
           </h1>
-          <p className="text-sm text-slate-400 mt-1">{total} total alerts</p>
+          <p className="text-sm text-muted mt-1">{total} total alerts</p>
         </div>
       </div>
 
@@ -47,7 +47,7 @@ export default function Alerts() {
       <div className="glass-card p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               type="text"
               placeholder="Search by IP, attack type..."
@@ -82,7 +82,7 @@ export default function Alerts() {
         {loading ? (
           <div className="flex justify-center py-16"><div className="loader" /></div>
         ) : alerts.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
+          <div className="text-center py-16 text-faint">
             <Bell size={40} className="mx-auto mb-3 opacity-30" />
             <p>No alerts found</p>
             <p className="text-xs mt-1">Upload traffic or start a simulation to generate alerts</p>
@@ -105,13 +105,13 @@ export default function Alerts() {
               <tbody>
                 {alerts.map(alert => (
                   <tr key={alert.id} className="cursor-pointer" onClick={() => navigate(`/alerts/${alert.id}`)}>
-                    <td className="font-mono text-xs text-slate-500">#{alert.id}</td>
+                    <td className="font-mono text-xs text-faint">#{alert.id}</td>
                     <td className="font-mono text-xs">{new Date(alert.timestamp).toLocaleString()}</td>
                     <td className="font-mono text-sm">{alert.source_ip}</td>
                     <td className="font-mono text-sm">{alert.destination_ip}</td>
                     <td className="uppercase">{alert.protocol}</td>
                     <td className="font-mono">
-                      <span className={alert.probability > 0.9 ? 'text-red-400' : alert.probability > 0.7 ? 'text-amber-400' : 'text-blue-400'}>
+                      <span className={alert.probability > 0.9 ? 'text-danger' : alert.probability > 0.7 ? 'text-warn' : 'text-brand'}>
                         {(alert.probability * 100).toFixed(1)}%
                       </span>
                     </td>
@@ -126,8 +126,8 @@ export default function Alerts() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#2a3550]">
-            <p className="text-xs text-slate-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-line">
+            <p className="text-xs text-faint">
               Page {page} of {totalPages} ({total} total)
             </p>
             <div className="flex gap-2">

@@ -1,8 +1,9 @@
-import { Activity, ShieldAlert, Radio, Cpu } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Radio, Cpu, Home } from 'lucide-react';
+import { useLocation, Link } from 'react-router-dom';
+import ThemeSwitcher from './ThemeSwitcher';
 
 const PAGE_TITLES = {
-  '/': 'Security Operations Dashboard',
+  '/dashboard': 'Security Operations Dashboard',
   '/analyzer': 'Network Traffic Analyzer',
   '/alerts': 'SOC Security Alerts',
   '/model': 'Model Performance Analytics',
@@ -12,46 +13,53 @@ const PAGE_TITLES = {
 
 export default function Header({ simulation, modelInfo }) {
   const location = useLocation();
-  const currentTitle = PAGE_TITLES[location.pathname] || 'Security Operations Center';
+  const currentTitle =
+    PAGE_TITLES[location.pathname] ||
+    (location.pathname.startsWith('/alerts/') ? 'Alert Investigation' : 'Security Operations Center');
 
   return (
-    <header className="h-16 bg-[#0d1117]/80 backdrop-blur-md border-b border-[#2a3550] px-6 flex items-center justify-between sticky top-0 z-30 min-w-0 w-full shrink-0">
-      {/* Page Title & Breadcrumb */}
+    <header className="h-16 bg-surface-blur backdrop-blur-md border-b border-line px-5 lg:px-7 flex items-center justify-between gap-4 sticky top-0 z-30 min-w-0 w-full shrink-0">
       <div className="flex items-center gap-3 min-w-0">
-        <h2 className="text-base font-semibold text-white truncate">
-          {currentTitle}
-        </h2>
-        <span className="hidden sm:inline-block text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full font-medium">
+        <h2 className="text-base font-semibold text-hi truncate">{currentTitle}</h2>
+        <span className="hidden sm:inline-block text-[0.68rem] bg-brand-soft text-brand border border-brand-soft px-2.5 py-0.5 rounded-full font-semibold">
           SOC v1.0
         </span>
       </div>
 
-      {/* System Status & Actions */}
-      <div className="flex items-center gap-4 shrink-0">
-        {/* Live Simulation Indicator */}
+      <div className="flex items-center gap-2.5 shrink-0">
         {simulation?.is_running ? (
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1 rounded-full text-xs font-semibold animate-pulse">
-            <Radio size={13} className="animate-spin" />
-            <span>LIVE STREAM ACTIVE</span>
+          <div className="flex items-center gap-2 bg-warn-soft border border-warn-soft text-warn px-3 py-1.5 rounded-lg text-xs font-semibold">
+            <Radio size={13} className="animate-pulse" />
+            <span className="hidden sm:inline">LIVE STREAM</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-700 text-slate-400 px-3 py-1 rounded-full text-xs">
-            <span className="w-2 h-2 rounded-full bg-slate-500" />
+          <div className="hidden sm:flex items-center gap-2 bg-card border border-line text-muted px-3 py-1.5 rounded-lg text-xs">
+            <span className="w-2 h-2 rounded-full bg-card-hover border border-line-strong" />
             <span>STREAM IDLE</span>
           </div>
         )}
 
-        {/* Model Status Badge */}
-        <div className="hidden md:flex items-center gap-2 bg-[#1a2235] border border-[#2a3550] px-3 py-1 rounded-lg text-xs">
-          <Cpu size={14} className="text-cyan-400" />
-          <span className="text-slate-400">Model:</span>
-          <span className="text-slate-200 font-mono font-medium">
+        <div className="hidden lg:flex items-center gap-2 bg-card border border-line px-3 py-1.5 rounded-lg text-xs">
+          <Cpu size={14} className="text-brand-2" />
+          <span className="text-muted">Model:</span>
+          <span className="text-hi font-mono font-semibold">
             {modelInfo?.model_version || 'v1.0'}
           </span>
-          <span className={`w-2 h-2 rounded-full ml-1 ${
-            modelInfo?.status === 'loaded' ? 'bg-emerald-400' : 'bg-red-400'
-          }`} />
+          <span
+            className="w-2 h-2 rounded-full ml-0.5"
+            style={{ background: modelInfo?.status === 'loaded' ? 'var(--ok)' : 'var(--danger)' }}
+          />
         </div>
+
+        <ThemeSwitcher />
+
+        <Link
+          to="/"
+          title="Back to landing page"
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-card border border-line text-muted hover:text-hi hover:border-line-strong transition-colors"
+        >
+          <Home size={15} />
+        </Link>
       </div>
     </header>
   );
