@@ -1,290 +1,414 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, Shield, AlertTriangle, CheckCircle,
-  TrendingUp, Clock, Radio, Play, Square
+  Activity, Shield, AlertTriangle, CheckCircle, Play, Square,
+  RefreshCw, Radio, Flame, Inbox, Target, Percent,
+  Cpu, Zap, Network, AlertCircle
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts';
-import { getDashboard, getTimeline, startSimulation, stopSimulation, getSimulationStatus } from '../services/api';
+import {
+  getDashboard, getTimeline, startSimulation, stopSimulation,
+  getSimulationStatus, getAlerts,
+} from '../services/api';
+import { useThemeTokens } from '../theme/ThemeContext';
 
-const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
+const TOKENS = ['brand', 'brand-2', 'ok', 'warn', 'danger', 'info', 'line', 'card', 'muted', 'hi', 'faint'];
+const SEV_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const nav = useNavigate();
+  const t = useThemeTokens(TOKENS);
+
   const [stats, setStats] = useState(null);
   const [timeline, setTimeline] = useState([]);
+  const [feed, setFeed] = useState([]);
   const [timeRange, setTimeRange] = useState('24h');
   const [simStatus, setSimStatus] = useState({ is_running: false });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const [dashRes, timeRes, simRes] = await Promise.all([
+      const [d, tl, sim, al] = await Promise.all([
         getDashboard(),
         getTimeline(timeRange),
         getSimulationStatus(),
+        getAlerts({ per_page: 100, sort_by: 'timestamp', sort_order: 'desc' }).catch(() => ({ data: { alerts: [] } })),
       ]);
-      setStats(dashRes.data);
-      setTimeline(timeRes.data.timeline || []);
-      setSimStatus(simRes.data);
+      setStats(d.data);
+      setTimeline(tl.data?.timeline || []);
+      setSimStatus(sim.data);
+      setFeed(al.data?.alerts || []);
+      setError(null);
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
+      console.warn('Dashboard fetch:', err?.message);
+      setError('API disconnected');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => { fetchData(); }, [timeRange]);
-  useEffect(() => {
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
   }, [timeRange]);
 
-  const handleSimulation = async () => {
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const iv = setInterval(fetchData, simStatus.is_running ? 4000 : 12000);
+    return () => clearInterval(iv);
+  }, [fetchData, simStatus.is_running]);
+
+  const handleSim = async () => {
     try {
-      if (simStatus.is_running) {
-        await stopSimulation();
-      } else {
-        await startSimulation(50);
-      }
-      const res = await getSimulationStatus();
-      setSimStatus(res.data);
-    } catch (err) {
-      console.error('Simulation error:', err);
-    }
+      if (simStatus.is_running) await stopSimulation();
+      else await startSimulation(50);
+      const r = await getSimulationStatus();
+      setSimStatus(r.data);
+      fetchData();
+    } catch (e) { console.error('Sim error:', e); }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-96">
-      <div className="loader" />
-    </div>
-  );
+  /* ── Derived data ── */
+  const sevData = useMemo(() => {
+    const d = stats?.severity_distribution || {};
+    return SEV_ORDER.filter((k) => d[k]).map((k) => ({ name: k, value: d[k] }));
+  }, [stats]);
 
-  const kpiCards = [
-    {
-      title: 'Total Traffic',
-      value: stats?.total_traffic?.toLocaleString() || '0',
-      icon: Activity,
-      color: 'blue',
-      subtitle: 'Records processed',
-    },
-    {
-      title: 'Normal Traffic',
-      value: stats?.normal_traffic?.toLocaleString() || '0',
-      icon: CheckCircle,
-      color: 'green',
-      subtitle: `${(100 - (stats?.attack_percentage || 0)).toFixed(1)}% of total`,
-    },
-    {
-      title: 'Detected Attacks',
-      value: stats?.attack_traffic?.toLocaleString() || '0',
-      icon: AlertTriangle,
-      color: 'red',
-      subtitle: `${stats?.attack_percentage || 0}% of total`,
-    },
-    {
-      title: 'Active Alerts',
-      value: stats?.active_alerts?.toLocaleString() || '0',
-      icon: Shield,
-      color: 'purple',
-      subtitle: `${stats?.critical_alerts || 0} critical`,
-    },
+  const statusData = useMemo(() => {
+    const d = stats?.status_distribution || {};
+    return Object.entries(d).map(([name, value]) => ({ name, value }));
+  }, [stats]);
+
+  const topSources = useMemo(() => {
+    const m = new Map();
+    feed.forEach((a) => {
+      if (!a.source_ip) return;
+      const p = m.get(a.source_ip) || { ip: a.source_ip, hits: 0, worst: 0 };
+      p.hits += 1;
+      p.worst = Math.max(p.worst, a.probability || 0);
+      m.set(a.source_ip, p);
+    });
+    return [...m.values()].sort((a, b) => b.hits - a.hits).slice(0, 5);
+  }, [feed]);
+
+  const attackTypes = useMemo(() => {
+    const m = new Map();
+    feed.forEach((a) => {
+      const k = a.attack_type || 'Unknown';
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+  }, [feed]);
+
+  const confidence = useMemo(() => {
+    if (!feed.length) return null;
+    const probs = feed.map((a) => a.probability || 0);
+    return {
+      avg: probs.reduce((s, p) => s + p, 0) / probs.length,
+      high: probs.filter((p) => p >= 0.9).length,
+      total: probs.length,
+    };
+  }, [feed]);
+
+  const sevColor = (n) => ({ CRITICAL: t.danger, HIGH: t.danger, MEDIUM: t.warn, LOW: t.brand }[n] || t.muted);
+  const statColor = (n) => ({ NEW: t.info, INVESTIGATING: t.warn, RESOLVED: t.ok, FALSE_POSITIVE: t.muted }[n] || t.muted);
+  const ttStyle = { background: t.card, border: `1px solid ${t.line}`, borderRadius: '8px', fontSize: '12px', color: t.hi };
+
+  if (loading) {
+    return (
+      <div className="dash-loading">
+        <div className="loader" />
+        <p className="text-xs text-muted">Loading telemetry…</p>
+      </div>
+    );
+  }
+
+  const kpis = [
+    { label: 'Traffic',  value: stats?.total_traffic?.toLocaleString() || '0',  icon: Activity,      color: 'blue',   tone: 'brand' },
+    { label: 'Normal',   value: stats?.normal_traffic?.toLocaleString() || '0', icon: CheckCircle,   color: 'green',  tone: 'ok' },
+    { label: 'Attacks',  value: stats?.attack_traffic?.toLocaleString() || '0', icon: AlertTriangle, color: 'red',    tone: 'danger' },
+    { label: 'Alerts',   value: stats?.active_alerts?.toLocaleString() || '0',  icon: Shield,        color: 'purple', tone: 'info' },
   ];
 
-  const severityData = stats?.severity_distribution
-    ? Object.entries(stats.severity_distribution).map(([name, value]) => ({ name, value }))
-    : [];
+  const toneBg = {
+    brand: 'bg-brand-soft border-brand-soft text-brand',
+    ok:    'bg-ok-soft border-ok-soft text-ok',
+    danger:'bg-danger-soft border-danger-soft text-danger',
+    info:  'bg-info-soft border-info-soft text-info',
+  };
 
   return (
-    <div className="animate-fadeIn space-y-6 w-full max-w-full min-w-0">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2a3550] pb-4">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Shield size={22} className="text-blue-400" /> Executive SOC Dashboard
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time Threat Monitoring & AI Anomaly Detection Engine
-            {simStatus.is_running && (
-              <span className="ml-2 text-amber-400 font-semibold">
-                [SIMULATION STREAM ACTIVE]
-              </span>
-            )}
-          </p>
+    <div className="dash animate-fadeIn">
+
+      {/* ── Toolbar ── */}
+      <div className="dash-toolbar">
+        <div className="dash-toolbar-left">
+          <span className="dash-dot" />
+          <span className="dash-toolbar-title">SOC Overview</span>
+          {simStatus.is_running && (
+            <span className="pill-status bg-warn-soft border-warn-soft text-warn">
+              <Radio size={11} className="animate-pulse" /> LIVE
+            </span>
+          )}
+          {error && (
+            <span className="pill-status bg-danger-soft border-danger-soft text-danger">
+              <AlertCircle size={11} /> Offline
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSimulation}
-            className={simStatus.is_running ? 'btn-danger' : 'btn-primary'}
-          >
-            {simStatus.is_running ? (
-              <><Square size={15}/> Stop Simulation</>
-            ) : (
-              <><Play size={15}/> Start Live Simulation</>
-            )}
+        <div className="dash-toolbar-right">
+          <button onClick={fetchData} className="btn-secondary btn-sm" title="Refresh">
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={handleSim} className={simStatus.is_running ? 'btn-danger btn-sm' : 'btn-primary btn-sm'}>
+            {simStatus.is_running ? <><Square size={13} /> Stop</> : <><Play size={13} /> Simulate</>}
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        {kpiCards.map((kpi, i) => (
-          <div key={i} className={`kpi-card ${kpi.color}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{kpi.title}</p>
-                <p className="text-2xl font-bold text-white mt-1.5">{kpi.value}</p>
-                <p className="text-xs text-slate-500 mt-1">{kpi.subtitle}</p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <kpi.icon size={20} className="text-cyan-400" />
-              </div>
+      {/* ── KPI Cards ── */}
+      <div className="dash-kpi-grid">
+        {kpis.map((k) => (
+          <div key={k.label} className={`kpi-card ${k.color}`}>
+            <div className="kpi-body">
+              <span className="kpi-label">{k.label}</span>
+              <span className="kpi-value">{k.value}</span>
             </div>
+            <span className={`kpi-icon ${toneBg[k.tone]}`}>
+              <k.icon size={16} />
+            </span>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
-        {/* Timeline Chart */}
-        <div className="lg:col-span-2 glass-card p-5 min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <h3 className="text-sm font-semibold text-white">Attack Timeline Volume</h3>
-            <div className="flex gap-1">
-              {['1h', '24h', '7d', 'all'].map(r => (
+      {/* ── Mini stats ── */}
+      <div className="dash-mini-grid">
+        <MiniStat icon={Inbox}   label="Total Alerts" value={stats?.total_alerts?.toLocaleString() || '0'} tone="brand" />
+        <MiniStat icon={Flame}   label="Critical"     value={stats?.critical_alerts?.toLocaleString() || '0'} tone="danger" />
+        <MiniStat icon={Percent} label="Avg Conf"     value={confidence ? `${(confidence.avg * 100).toFixed(1)}%` : '—'} tone="warn" />
+        <MiniStat icon={Target}  label="High Conf"    value={confidence ? `${confidence.high}/${confidence.total}` : '—'} tone="info" />
+      </div>
+
+      {/* ── Charts Row ── */}
+      <div className="dash-charts-row">
+        {/* Timeline */}
+        <div className="glass-card dash-chart-main">
+          <div className="dash-chart-header">
+            <h3 className="dash-chart-title"><Zap size={14} className="text-brand" /> Traffic Volume</h3>
+            <div className="dash-range-btns">
+              {['1h', '24h', '7d', 'all'].map((r) => (
                 <button key={r} onClick={() => setTimeRange(r)}
-                  className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all ${
-                    timeRange === r
-                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
+                  className={`dash-range-btn ${timeRange === r ? 'active' : ''}`}>
                   {r === 'all' ? 'All' : r.toUpperCase()}
                 </button>
               ))}
             </div>
           </div>
           {timeline.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={timeline}>
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={timeline} margin={{ top: 5, right: 5, left: -18, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gradAttack" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={t.danger} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={t.danger} stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="gradNormal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  <linearGradient id="gN" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={t.ok} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={t.ok} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="period" tick={{fontSize: 10, fill: '#64748b'}} tickFormatter={v => v?.split(' ')[1] || v} />
-                <YAxis tick={{fontSize: 10, fill: '#64748b'}} />
-                <Tooltip
-                  contentStyle={{ background: '#1a2235', border: '1px solid #2a3550', borderRadius: '8px', fontSize: '12px' }}
-                  labelStyle={{ color: '#94a3b8' }}
-                />
-                <Area type="monotone" dataKey="normal" stroke="#10b981" fill="url(#gradNormal)" strokeWidth={2} name="Normal Traffic" />
-                <Area type="monotone" dataKey="attacks" stroke="#ef4444" fill="url(#gradAttack)" strokeWidth={2} name="Attack Traffic" />
+                <CartesianGrid strokeDasharray="3 3" stroke={t.line} vertical={false} />
+                <XAxis dataKey="period" tick={{ fontSize: 10, fill: t.muted }} tickLine={false}
+                  axisLine={{ stroke: t.line }} tickFormatter={(v) => v?.split(' ')[1] || v} />
+                <YAxis tick={{ fontSize: 10, fill: t.muted }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={ttStyle} cursor={{ stroke: t.line }} />
+                <Area type="monotone" dataKey="normal" stroke={t.ok} fill="url(#gN)" strokeWidth={2} name="Normal" />
+                <Area type="monotone" dataKey="attacks" stroke={t.danger} fill="url(#gA)" strokeWidth={2} name="Attacks" />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-60 text-slate-500 text-sm">
-              No timeline data recorded.
-            </div>
+            <EmptyPanel icon={Activity} text="No data yet" action={!simStatus.is_running && handleSim} actionText="Start Simulation" />
           )}
         </div>
 
-        {/* Severity Distribution */}
-        <div className="glass-card p-5 min-w-0">
-          <h3 className="text-sm font-semibold text-white mb-4">Severity Breakdown</h3>
-          {severityData.length > 0 ? (
-            <div>
-              <ResponsiveContainer width="100%" height={180}>
+        {/* Severity Donut */}
+        <div className="glass-card dash-chart-side">
+          <h3 className="dash-chart-title"><Shield size={14} className="text-brand-2" /> Severity</h3>
+          {sevData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
-                  <Pie data={severityData} cx="50%" cy="50%" innerRadius={45} outerRadius={70}
-                    paddingAngle={3} dataKey="value"
-                  >
-                    {severityData.map((_, i) => (
-                      <Cell key={i} fill={
-                        severityData[i]?.name === 'CRITICAL' ? '#dc2626' :
-                        severityData[i]?.name === 'HIGH' ? '#ef4444' :
-                        severityData[i]?.name === 'MEDIUM' ? '#f59e0b' : '#3b82f6'
-                      } />
-                    ))}
+                  <Pie data={sevData} cx="50%" cy="50%" innerRadius={42} outerRadius={65}
+                    paddingAngle={3} dataKey="value" stroke="none">
+                    {sevData.map((s) => <Cell key={s.name} fill={sevColor(s.name)} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: '#1a2235', border: '1px solid #2a3550', borderRadius: '8px', fontSize: '12px' }} />
+                  <Tooltip contentStyle={ttStyle} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-2 mt-2">
-                {severityData.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs">
+              <div className="dash-sev-legend">
+                {sevData.map((s) => (
+                  <div key={s.name} className="dash-sev-row">
                     <span className={`badge badge-${s.name.toLowerCase()}`}>{s.name}</span>
-                    <span className="text-slate-300 font-mono font-medium">{s.value}</span>
+                    <span className="dash-sev-count">{s.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           ) : (
-            <div className="flex items-center justify-center h-60 text-slate-500 text-sm">
-              No alerts recorded
-            </div>
+            <EmptyPanel icon={Shield} text="No severity data" action={!simStatus.is_running && handleSim} actionText="Generate Traffic" />
           )}
         </div>
       </div>
 
-      {/* Recent Alerts */}
-      <div className="glass-card p-5 w-full min-w-0">
-        <div className="flex items-center justify-between mb-4 border-b border-[#2a3550] pb-2.5">
-          <h3 className="text-sm font-semibold text-white">Recent SOC Alerts</h3>
-          <button onClick={() => navigate('/alerts')} className="text-xs text-blue-400 hover:text-blue-300 font-medium">
-            View All Alerts →
-          </button>
+      {/* ── Second Row: Attack types, Triage, Top IPs ── */}
+      <div className="dash-3col">
+        {/* Attack Types */}
+        <div className="glass-card dash-panel">
+          <h3 className="dash-chart-title">Attack Types</h3>
+          {attackTypes.length > 0 ? (
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={attackTypes} layout="vertical" margin={{ top: 8, right: 8, left: 5, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={t.line} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: t.muted }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={78}
+                  tick={{ fontSize: 10, fill: t.muted }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={ttStyle} cursor={{ fill: t.line, opacity: 0.3 }} />
+                <Bar dataKey="value" fill={t.brand} radius={[0, 4, 4, 0]} barSize={10} name="Count" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyPanel icon={Cpu} text="No attacks classified" />
+          )}
+        </div>
+
+        {/* Triage Queue */}
+        <div className="glass-card dash-panel">
+          <h3 className="dash-chart-title">Triage Queue</h3>
+          {statusData.length > 0 ? (
+            <div className="dash-triage-list">
+              {statusData.map((s) => {
+                const total = statusData.reduce((a, x) => a + x.value, 0) || 1;
+                const pct = (s.value / total) * 100;
+                return (
+                  <div key={s.name} className="dash-triage-item">
+                    <div className="dash-triage-row">
+                      <span className="dash-triage-name">{s.name.replace('_', ' ')}</span>
+                      <span className="dash-triage-val">{s.value}</span>
+                    </div>
+                    <div className="dash-triage-bar">
+                      <div className="dash-triage-fill" style={{ width: `${pct}%`, background: statColor(s.name) }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyPanel icon={Inbox} text="Queue empty" />
+          )}
+        </div>
+
+        {/* Top IPs */}
+        <div className="glass-card dash-panel">
+          <h3 className="dash-chart-title">Top Source IPs</h3>
+          {topSources.length > 0 ? (
+            <ul className="dash-ip-list">
+              {topSources.map((s, i) => (
+                <li key={s.ip} className="dash-ip-row">
+                  <span className="dash-ip-rank">{i + 1}</span>
+                  <span className="dash-ip-info">
+                    <span className="dash-ip-addr">{s.ip}</span>
+                    <span className="dash-ip-conf">{(s.worst * 100).toFixed(0)}% peak</span>
+                  </span>
+                  <span className="badge badge-high">{s.hits}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyPanel icon={Network} text="No repeat offenders" />
+          )}
+        </div>
+      </div>
+
+      {/* ── Alert Table ── */}
+      <div className="glass-card dash-panel">
+        <div className="dash-table-header">
+          <h3 className="dash-chart-title"><Network size={14} className="text-brand" /> Recent Alerts</h3>
+          <button onClick={() => nav('/alerts')} className="btn-ghost btn-xs">View All →</button>
         </div>
         {stats?.recent_alerts?.length > 0 ? (
-          <div className="overflow-x-auto w-full">
-            <table className="data-table w-full min-w-[600px]">
+          <div className="dash-table-wrap">
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th>Time</th>
-                  <th>Source IP</th>
-                  <th>Destination IP</th>
-                  <th>Protocol</th>
-                  <th>Attack Probability</th>
-                  <th>Severity</th>
-                  <th>Status</th>
+                  <th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th>
+                  <th>Type</th><th>Confidence</th><th>Severity</th><th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.recent_alerts.map((alert) => (
-                  <tr
-                    key={alert.id}
-                    className="cursor-pointer hover:bg-slate-800/50 transition-colors"
-                    onClick={() => navigate(`/alerts/${alert.id}`)}
-                  >
-                    <td className="font-mono text-xs text-slate-400">{new Date(alert.timestamp).toLocaleString()}</td>
-                    <td className="font-mono text-sm text-slate-200">{alert.source_ip}</td>
-                    <td className="font-mono text-sm text-slate-200">{alert.destination_ip}</td>
-                    <td className="uppercase text-xs font-semibold text-cyan-400">{alert.protocol}</td>
-                    <td className="font-mono text-xs font-bold text-red-400">
-                      {(alert.probability * 100).toFixed(1)}%
+                {stats.recent_alerts.map((a) => (
+                  <tr key={a.id} className="cursor-pointer" onClick={() => nav(`/alerts/${a.id}`)}>
+                    <td className="font-mono text-xs text-muted">{new Date(a.timestamp).toLocaleTimeString()}</td>
+                    <td className="font-mono text-xs font-semibold text-hi">{a.source_ip}</td>
+                    <td className="font-mono text-xs text-body">{a.destination_ip}</td>
+                    <td className="text-xs font-bold text-brand-2" style={{ textTransform: 'uppercase' }}>{a.protocol}</td>
+                    <td className="text-xs text-body">{a.attack_type || 'Unknown'}</td>
+                    <td>
+                      <div className="dash-conf-cell">
+                        <div className="dash-conf-bar">
+                          <div className="dash-conf-fill"
+                            style={{ width: `${Math.min(100, (a.probability || 0) * 100)}%`,
+                              background: (a.probability || 0) >= 0.9 ? t.danger : t.warn }} />
+                        </div>
+                        <span className="font-mono text-xs font-bold text-hi">{((a.probability || 0) * 100).toFixed(1)}%</span>
+                      </div>
                     </td>
-                    <td><span className={`badge badge-${alert.severity?.toLowerCase()}`}>{alert.severity}</span></td>
-                    <td><span className={`badge badge-${alert.status?.toLowerCase().replace('_', '-')}`}>{alert.status}</span></td>
+                    <td><span className={`badge badge-${a.severity?.toLowerCase()}`}>{a.severity}</span></td>
+                    <td><span className={`badge badge-${a.status?.toLowerCase().replace('_', '-')}`}>{a.status}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="text-sm text-slate-500 text-center py-8">
-            No active alerts recorded yet.
-          </p>
+          <EmptyPanel icon={Shield} text="No alerts recorded" action={!simStatus.is_running && handleSim} actionText="Start Simulation" />
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Small components ── */
+
+function MiniStat({ icon: Icon, label, value, tone }) {
+  const cls = {
+    brand: 'bg-brand-soft border-brand-soft text-brand',
+    danger: 'bg-danger-soft border-danger-soft text-danger',
+    warn: 'bg-warn-soft border-warn-soft text-warn',
+    info: 'bg-info-soft border-info-soft text-info',
+  }[tone];
+  return (
+    <div className="glass-card dash-mini">
+      <span className={`dash-mini-icon ${cls}`}><Icon size={14} /></span>
+      <span className="dash-mini-body">
+        <span className="dash-mini-label">{label}</span>
+        <span className="dash-mini-value">{value}</span>
+      </span>
+    </div>
+  );
+}
+
+function EmptyPanel({ icon: Icon, text, action, actionText }) {
+  return (
+    <div className="empty-state" style={{ minHeight: 160 }}>
+      <div className="empty-state-icon">{Icon && <Icon size={16} />}</div>
+      <p className="text-xs text-faint">{text}</p>
+      {action && actionText && (
+        <button onClick={action} className="btn-primary btn-xs">
+          <Play size={11} /> {actionText}
+        </button>
+      )}
     </div>
   );
 }
