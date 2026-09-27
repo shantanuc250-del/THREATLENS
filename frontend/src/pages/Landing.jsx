@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, Zap, Upload, Flame } from 'lucide-react';
 
-export default function Landing({ navigateTo }) {
+export default function Landing({ navigateTo = () => {} }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{

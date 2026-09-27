@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Play, Square, Terminal } from 'lucide-react';
 
@@ -13,10 +13,48 @@ export default function Simulator() {
   const [selectedScenario, setSelectedScenario] = useState('dos');
   const [simLogs, setSimLogs] = useState([]);
 
+  // Live polling for server terminal log stream when running
+  useEffect(() => {
+    let interval = null;
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+    if (simRunning) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${apiBase}/api/simulation/status`);
+          if (res.data && Array.isArray(res.data.logs) && res.data.logs.length > 0) {
+            setSimLogs(res.data.logs);
+            if (res.data.is_running === false) {
+              setSimRunning(false);
+            }
+          }
+        } catch {
+          // Offline fallback: synthesize periodic packet logs
+          const time = new Date().toLocaleTimeString();
+          const ptypes = ['TCP SYN', 'ICMP Echo', 'AUTH_REQ', 'R2L probe'];
+          const randType = ptypes[Math.floor(Math.random() * ptypes.length)];
+          const randIp = `192.168.1.${Math.floor(Math.random() * 250) + 2}`;
+          setSimLogs((prev) => [
+            `[${time}] Synthetic packet: ${randType} from ${randIp} -> Edge Inspection: MITIGATED`,
+            ...prev.slice(0, 19)
+          ]);
+        }
+      }, 1500);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [simRunning]);
+
   const toggleSimulation = async () => {
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
     if (simRunning) {
       setSimRunning(false);
       setSimLogs((prev) => [`[${new Date().toLocaleTimeString()}] Pipeline stopped by operator.`, ...prev]);
+      try {
+        await axios.post(`${apiBase}/api/simulation`, { scenario: selectedScenario, action: 'stop' });
+      } catch {}
     } else {
       setSimRunning(true);
       setSimLogs([
@@ -25,7 +63,10 @@ export default function Simulator() {
         `[${new Date().toLocaleTimeString()}] Model detected incoming anomalies.`
       ]);
       try {
-        await axios.post('http://localhost:5000/api/simulation', { scenario: selectedScenario });
+        const res = await axios.post(`${apiBase}/api/simulation`, { scenario: selectedScenario, action: 'start' });
+        if (res.data && res.data.logs) {
+          setSimLogs(res.data.logs);
+        }
       } catch {}
     }
   };

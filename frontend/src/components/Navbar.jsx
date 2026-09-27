@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings' }
 ];
 
-export default function Navbar({ currentPage, navigateTo, onOpenDrawer }) {
+export default function Navbar({ currentPage = 'dashboard', navigateTo = () => {}, onOpenDrawer = () => {} }) {
   return (
     <header style={{
       backgroundColor: '#0d1525',

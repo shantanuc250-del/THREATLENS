@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import AlertDetailModal from '../components/AlertDetailModal';
 
-export default function Alerts({ alerts }) {
+export default function Alerts({ alerts = [] }) {
   const [alertFilter, setAlertFilter] = useState('ALL');
   const [alertSearch, setAlertSearch] = useState('');
   const [selectedAlert, setSelectedAlert] = useState(null);
 
-  const filteredAlerts = alerts.filter((a) => {
-    const matchesFilter = alertFilter === 'ALL' || a.risk.toUpperCase() === alertFilter;
-    const matchesSearch = alertSearch === '' || a.type.toLowerCase().includes(alertSearch.toLowerCase()) || a.source.includes(alertSearch);
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const filteredAlerts = safeAlerts.filter((a) => {
+    const risk = (a.risk || a.severity || '').toUpperCase();
+    const matchesFilter = alertFilter === 'ALL' || risk === alertFilter;
+    const matchesSearch = alertSearch === '' || (a.type || a.attack_type || '').toLowerCase().includes(alertSearch.toLowerCase()) || (a.source || a.source_ip || '').includes(alertSearch);
     return matchesFilter && matchesSearch;
   });
 

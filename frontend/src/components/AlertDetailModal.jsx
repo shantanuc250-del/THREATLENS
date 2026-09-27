@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
-export default function AlertDetailModal({ alert, onClose }) {
+export default function AlertDetailModal({ alert = null, onClose = () => {} }) {
   if (!alert) return null;
 
   return (
