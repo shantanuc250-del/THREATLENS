@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    apiEndpoint: 'http://localhost:5000/api',
+    apiEndpoint: (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api',
     threshold: '0.75',
     autoBlock: true,
     packetCaptureRate: '1000'

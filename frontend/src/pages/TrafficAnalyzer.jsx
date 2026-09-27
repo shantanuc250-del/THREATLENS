@@ -32,8 +32,9 @@ export default function TrafficAnalyzer() {
 
   const handleInspect = async () => {
     setPredictLoading(true);
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
     try {
-      const res = await axios.post('http://localhost:5000/api/predict', formData);
+      const res = await axios.post(`${apiBase}/api/predict`, formData);
       setPredictionResult(res.data);
     } catch {
       const isAttack = formData.flag !== 'SF' || parseInt(formData.src_bytes, 10) === 0 || parseFloat(formData.serror_rate) > 0.4;
@@ -137,8 +138,9 @@ export default function TrafficAnalyzer() {
     setIsProcessingCsv(true);
     const fakeFormData = new FormData();
     fakeFormData.append('file', uploadedFile);
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
     try {
-      const res = await axios.post('http://localhost:5000/api/predict/batch', fakeFormData);
+      const res = await axios.post(`${apiBase}/api/predict/batch`, fakeFormData);
       setBatchResults(res.data);
     } catch {
       setTimeout(() => {
@@ -398,11 +400,29 @@ export default function TrafficAnalyzer() {
                 </h4>
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#38bdf8', display: 'block' }}>
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#38bdf8' }}>
                 Confidence: {predictionResult.confidence}
               </span>
               <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Action: {predictionResult.suggested_action}</span>
+              {predictionResult.prediction !== 'Normal' && (
+                <button
+                  onClick={() => alert(`Edge Firewall Rule Applied: Blocked inbound flow vector [${predictionResult.attack_type}].`)}
+                  style={{
+                    backgroundColor: '#ef4444',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    padding: '3px 8px',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '2px'
+                  }}
+                >
+                  Deploy Firewall Block
+                </button>
+              )}
             </div>
           </div>
         )}

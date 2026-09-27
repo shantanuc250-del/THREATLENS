@@ -15,7 +15,7 @@ const DRAWER_ITEMS = [
   { id: 'settings', label: 'System Configuration', icon: Settings }
 ];
 
-export default function SidebarDrawer({ isOpen, onClose, currentPage, navigateTo }) {
+export default function SidebarDrawer({ isOpen = false, onClose = () => {}, currentPage = 'dashboard', navigateTo = () => {} }) {
   if (!isOpen) return null;
 
   return (

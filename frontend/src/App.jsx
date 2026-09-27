@@ -83,7 +83,8 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/dashboard')
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    axios.get(`${apiBase}/api/dashboard`)
       .then((res) => {
         if (res.data) {
           setStats((prev) => ({

@@ -32,7 +32,8 @@ export default function ModelHealth() {
 
   const fetchHealth = () => {
     setHealthLoading(true);
-    axios.get('http://localhost:5000/api/health')
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    axios.get(`${apiBase}/api/health`)
       .then((res) => {
         if (res.data) {
           setHealthData((prev) => ({
@@ -49,7 +50,8 @@ export default function ModelHealth() {
 
   const runDriftCheck = () => {
     setDriftChecking(true);
-    axios.post('http://localhost:5000/api/model/drift')
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    axios.post(`${apiBase}/api/model/drift`)
       .then((res) => {
         if (res.data) {
           setHealthData((prev) => ({
