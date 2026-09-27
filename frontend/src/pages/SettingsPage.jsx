@@ -1,147 +1,94 @@
-import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Info, Shield, Database, Cpu, ExternalLink, Palette, Check } from 'lucide-react';
-import { getHealth, getModelInfo } from '../services/api';
-import { useTheme } from '../theme/ThemeContext';
+import React, { useState } from 'react';
 
-export default function Settings() {
-  const { theme, setTheme, themes } = useTheme();
-  const [health, setHealth] = useState(null);
-  const [modelInfo, setModelInfo] = useState(null);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const [h, m] = await Promise.all([getHealth(), getModelInfo()]);
-        setHealth(h.data);
-        setModelInfo(m.data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetch();
-  }, []);
+export default function SettingsPage() {
+  const [settings, setSettings] = useState({
+    apiEndpoint: 'http://localhost:5000/api',
+    threshold: '0.75',
+    autoBlock: true,
+    packetCaptureRate: '1000'
+  });
 
   return (
-    <div className="animate-fadeIn space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div>
-        <h1 className="text-2xl font-bold text-hi flex items-center gap-2">
-          <SettingsIcon size={24} /> System Information
-        </h1>
-        <p className="text-sm text-muted mt-1">Configuration and system status</p>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>System Configuration & Policies</h2>
+        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>Tune API endpoints, detection thresholds, and automated edge mitigations.</p>
       </div>
 
-      {/* Appearance */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-hi mb-1 flex items-center gap-2">
-          <Palette size={16} /> Appearance
-        </h3>
-        <p className="text-xs text-muted mb-4">
-          Pick the console palette. Your choice is stored in this browser and applies everywhere, including charts.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {themes.map((th) => {
-            const isActive = th.id === theme;
-            return (
-              <button
-                key={th.id}
-                type="button"
-                onClick={() => setTheme(th.id)}
-                aria-pressed={isActive}
-                className={`text-left rounded-xl border p-3.5 transition-all ${
-                  isActive
-                    ? 'border-brand-soft bg-brand-soft'
-                    : 'border-line bg-card hover:border-line-strong'
-                }`}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="flex -space-x-1.5">
-                    {th.swatch.map((c, i) => (
-                      <span key={i} className="w-5 h-5 rounded-full border border-line" style={{ background: c }} />
-                    ))}
-                  </span>
-                  {isActive && <Check size={15} className="text-brand" />}
-                </span>
-                <span className={`block mt-2.5 text-sm font-semibold ${isActive ? 'text-brand' : 'text-hi'}`}>
-                  {th.label}
-                </span>
-                <span className="block text-xs text-faint mt-0.5">{th.hint}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* System Status */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-hi mb-4 flex items-center gap-2">
-            <Cpu size={16} /> System Status
-          </h3>
-          <div className="space-y-3">
-            {[
-              ['API Status', health ? 'Online' : 'Offline', health ? 'text-ok' : 'text-danger'],
-              ['Model Loaded', health?.model_loaded ? 'Yes' : 'No', health?.model_loaded ? 'text-ok' : 'text-danger'],
-              ['API Timestamp', health?.timestamp ? new Date(health.timestamp).toLocaleString() : 'N/A', 'text-body'],
-            ].map(([label, value, color], i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-line">
-                <span className="text-xs text-faint">{label}</span>
-                <span className={`text-sm font-mono ${color}`}>{value}</span>
-              </div>
-            ))}
-          </div>
+      <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.3rem', fontWeight: 600 }}>Backend REST API Base URL</label>
+          <input
+            type="text"
+            value={settings.apiEndpoint}
+            onChange={(e) => setSettings({ ...settings, apiEndpoint: e.target.value })}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              backgroundColor: '#090d16',
+              border: '1px solid #1e2e4a',
+              borderRadius: '4px',
+              color: '#fff',
+              fontSize: '0.82rem',
+              boxSizing: 'border-box'
+            }}
+          />
         </div>
 
-        {/* Model Config */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-hi mb-4 flex items-center gap-2">
-            <Shield size={16} /> Model Configuration
-          </h3>
-          <div className="space-y-3">
-            {modelInfo?.model_params && Object.entries(modelInfo.model_params).map(([key, val], i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-line">
-                <span className="text-xs text-faint">{key}</span>
-                <span className="text-sm text-body font-mono">{val}</span>
-              </div>
-            ))}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+            <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Anomaly Confidence Trigger Threshold</label>
+            <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontFamily: 'monospace' }}>{settings.threshold}</span>
           </div>
-          {modelInfo?.notes && (
-            <p className="text-[0.65rem] text-faint mt-3 italic">{modelInfo.notes}</p>
-          )}
+          <input
+            type="range"
+            min="0.50"
+            max="0.99"
+            step="0.01"
+            value={settings.threshold}
+            onChange={(e) => setSettings({ ...settings, threshold: e.target.value })}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
         </div>
 
-        {/* About */}
-        <div className="lg:col-span-2 glass-card p-5">
-          <h3 className="text-sm font-semibold text-hi mb-4 flex items-center gap-2">
-            <Info size={16} /> About ThreatLens
-          </h3>
-          <div className="text-sm text-muted space-y-3">
-            <p>
-              <strong className="text-hi">ThreatLens</strong> is an AI-powered Network Intrusion Detection & SOC Alerting Platform.
-              It uses machine learning to analyze network traffic patterns and surface potential threats to SOC analysts.
-            </p>
-            <p className="text-xs italic">
-              "See the threats signatures miss."
-            </p>
-            <div className="bg-warn-soft border border-warn-soft rounded-lg p-3 text-xs text-warn">
-              <strong>Important:</strong> ThreatLens is a decision-support system. It generates alerts and recommendations.
-              It does NOT automatically block traffic, terminate connections, or take offensive actions.
-              The final security decision belongs to the human SOC analyst.
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              {[
-                ['Dataset', 'NSL-KDD'],
-                ['Algorithm', 'Random Forest'],
-                ['Classification', 'Binary (Normal/Attack)'],
-                ['Storage', 'SQLite'],
-              ].map(([label, val], i) => (
-                <div key={i} className="bg-surface rounded-lg p-3">
-                  <p className="text-xs text-faint">{label}</p>
-                  <p className="text-sm text-hi font-mono mt-0.5">{val}</p>
-                </div>
-              ))}
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1a263e', paddingTop: '0.75rem' }}>
+          <div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Autonomous Edge Firewall Drop</span>
+            <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b' }}>Immediately drop incoming flows exceeding confidence thresholds.</p>
           </div>
+          <button
+            onClick={() => setSettings({ ...settings, autoBlock: !settings.autoBlock })}
+            style={{
+              backgroundColor: settings.autoBlock ? '#0284c7' : '#1e293b',
+              border: '1px solid #233555',
+              color: settings.autoBlock ? '#fff' : '#94a3b8',
+              padding: '4px 12px',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {settings.autoBlock ? 'Enabled' : 'Disabled'}
+          </button>
         </div>
+
+        <button
+          onClick={() => alert('Settings successfully applied.')}
+          style={{
+            backgroundColor: '#0284c7',
+            border: 'none',
+            borderRadius: '5px',
+            color: '#fff',
+            padding: '0.6rem',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginTop: '0.5rem'
+          }}
+        >
+          Save Configuration
+        </button>
       </div>
     </div>
   );

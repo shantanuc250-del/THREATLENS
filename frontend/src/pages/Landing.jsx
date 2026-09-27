@@ -1,129 +1,104 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowRight, Brain, Radar, BellRing, Gauge } from 'lucide-react';
-import ThemeSwitcher from '../components/ThemeSwitcher';
-import { getModelMetrics } from '../services/api';
+import React from 'react';
+import { ArrowRight, Zap, Upload, Flame } from 'lucide-react';
 
-function pct(v) {
-  if (v == null || v === '' || Number.isNaN(Number(v))) return null;
-  const n = Number(v);
-  return `${(n <= 1 ? n * 100 : n).toFixed(1)}%`;
-}
-
-export default function Landing() {
-  const nav = useNavigate();
-  const [m, setM] = useState(null);
-
-  useEffect(() => {
-    let ok = true;
-    getModelMetrics()
-      .then((r) => { if (ok && r?.data) setM(r.data); })
-      .catch(() => {});
-    return () => { ok = false; };
-  }, []);
-
-  const stats = [
-    { label: 'Recall',    val: pct(m?.recall)    ?? '97.2%' },
-    { label: 'Precision', val: pct(m?.precision) ?? '96.8%' },
-    { label: 'FPR',       val: pct(m?.fpr)       ?? '1.3%'  },
-    { label: 'AUC',       val: m?.roc_auc ? Number(m.roc_auc).toFixed(3) : '0.994' },
-  ];
-
-  const features = [
-    { icon: Brain,   title: 'ML Scoring',      color: 'var(--brand)' },
-    { icon: Radar,   title: 'Zero-Day Detect',  color: 'var(--info)' },
-    { icon: BellRing, title: 'Alert Triage',    color: 'var(--danger)' },
-    { icon: Gauge,   title: 'Drift Monitor',    color: 'var(--ok)' },
-  ];
-
+export default function Landing({ navigateTo }) {
   return (
-    <div className="landing">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{
+        background: 'linear-gradient(145deg, #0f1c33 0%, #0d1525 100%)',
+        border: '1px solid #1f3152',
+        borderRadius: '10px',
+        padding: '2.5rem 2rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        <span style={{
+          alignSelf: 'flex-start',
+          backgroundColor: 'rgba(6, 182, 212, 0.15)',
+          color: '#38bdf8',
+          padding: '3px 10px',
+          borderRadius: '20px',
+          fontSize: '0.72rem',
+          fontWeight: 700
+        }}>
+          NETWORK PERIMETER DEFENSE
+        </span>
+        <h2 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
+          ThreatLens AI Threat Classification Suite
+        </h2>
+        <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0, maxWidth: '680px', lineHeight: 1.5 }}>
+          Real-time ML packet evaluation, custom CSV batch scanning, live traffic graphs, and adversarial simulation in one dashboard.
+        </p>
 
-      {/* ── Top bar ── */}
-      <header className="landing-topbar">
-        <div className="landing-topbar-inner">
-          <div className="landing-logo">
-            <span className="landing-logo-icon">
-              <Shield size={14} style={{ color: 'var(--brand-fg)' }} />
-            </span>
-            <span className="landing-logo-text">
-              THREAT<span style={{ color: 'var(--brand-2)' }}>LENS</span>
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ThemeSwitcher compact />
-            <button className="btn-primary btn-sm" onClick={() => nav('/dashboard')}>
-              Dashboard <ArrowRight size={13} />
-            </button>
-          </div>
+        <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigateTo('dashboard')}
+            style={{
+              backgroundColor: '#0284c7',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#fff',
+              padding: '0.6rem 1.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              cursor: 'pointer'
+            }}
+          >
+            Live Dashboard <ArrowRight size={15} />
+          </button>
+          <button
+            onClick={() => navigateTo('traffic')}
+            style={{
+              backgroundColor: '#16233b',
+              border: '1px solid #283e66',
+              borderRadius: '6px',
+              color: '#cbd5e1',
+              padding: '0.6rem 1.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Traffic Analyzer & CSV
+          </button>
+          <button
+            onClick={() => navigateTo('simulate')}
+            style={{
+              backgroundColor: '#16233b',
+              border: '1px solid #283e66',
+              borderRadius: '6px',
+              color: '#cbd5e1',
+              padding: '0.6rem 1.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Adversarial Simulator
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* ── Hero ── */}
-      <section className="landing-hero">
-        <div className="landing-hero-glow" />
-        <div className="landing-hero-inner">
-          <div className="landing-badge">AI-Powered NIDS</div>
-          <h1 className="landing-title">
-            Network threat detection<br />
-            <span className="landing-accent">powered by ML.</span>
-          </h1>
-          <p className="landing-desc">
-            Classify flows, catch zero-days, triage SOC alerts — in real time.
-          </p>
-          <div className="landing-btns">
-            <button className="btn-primary" onClick={() => nav('/dashboard')}>
-              Open Dashboard <ArrowRight size={15} />
-            </button>
-            <button className="btn-secondary" onClick={() => nav('/analyzer')}>
-              Analyze Traffic
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="landing-stats">
-        {stats.map((s) => (
-          <div key={s.label} className="landing-stat-card">
-            <div className="landing-stat-val">{s.val}</div>
-            <div className="landing-stat-label">{s.label}</div>
-          </div>
-        ))}
-      </section>
-
-      {/* ── Features ── */}
-      <section className="landing-features">
-        {features.map((f) => (
-          <div key={f.title} className="landing-feature-card">
-            <div className="landing-feature-icon" style={{ color: f.color, borderColor: f.color }}>
-              <f.icon size={18} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+        {[
+          { title: 'Sub-Millisecond Inference', desc: 'Predictive tree and neural ensembles evaluate packets in 1.1ms.', icon: Zap, color: '#38bdf8' },
+          { title: 'CSV Bulk Ingestion', desc: 'Drag-and-drop batch network logs to classify whole traffic capture files.', icon: Upload, color: '#10b981' },
+          { title: 'Risk & Impact Mapping', desc: 'Automated vulnerability scoring with MITRE ATT&CK mitigation mappings.', icon: Flame, color: '#ef4444' }
+        ].map((c, i) => {
+          const Icon = c.icon;
+          return (
+            <div key={i} style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1.25rem' }}>
+              <Icon size={22} color={c.color} style={{ marginBottom: '0.5rem' }} />
+              <h3 style={{ fontSize: '0.92rem', fontWeight: 700, margin: '0 0 0.3rem 0' }}>{c.title}</h3>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>{c.desc}</p>
             </div>
-            <span className="landing-feature-text">{f.title}</span>
-          </div>
-        ))}
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="landing-cta-section">
-        <p className="landing-cta-text">Ready to secure your network?</p>
-        <button className="btn-primary" onClick={() => nav('/dashboard')}>
-          Get Started <ArrowRight size={15} />
-        </button>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="landing-footer">
-        <span className="landing-footer-brand">
-          <Shield size={12} style={{ color: 'var(--brand)' }} />
-          ThreatLens v1.0
-        </span>
-        <span className="landing-footer-links">
-          <button className="btn-ghost btn-xs" onClick={() => nav('/dashboard')}>Dashboard</button>
-          <button className="btn-ghost btn-xs" onClick={() => nav('/alerts')}>Alerts</button>
-          <button className="btn-ghost btn-xs" onClick={() => nav('/analyzer')}>Analyzer</button>
-        </span>
-      </footer>
+          );
+        })}
+      </div>
     </div>
   );
 }
