@@ -16,8 +16,18 @@ import ModelHealth from './pages/ModelHealth';
 import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('landing');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Locked strictly to Dark Cyber-Defense SOC Theme
+  const theme = 'dark';
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    try {
+      localStorage.setItem('threatlens_theme', 'dark');
+    } catch {}
+  }, []);
 
   // SOC Stats (shared with Dashboard)
   const [stats, setStats] = useState({
@@ -108,33 +118,48 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'landing':
-        return <Landing navigateTo={navigateTo} />;
+        return <Landing navigateTo={navigateTo} theme={theme} />;
       case 'dashboard':
-        return <Dashboard stats={stats} setStats={setStats} alerts={alerts} navigateTo={navigateTo} />;
+        return <Dashboard stats={stats} setStats={setStats} alerts={alerts} navigateTo={navigateTo} theme={theme} />;
       case 'alerts':
-        return <Alerts alerts={alerts} />;
+        return <Alerts alerts={alerts} theme={theme} />;
       case 'traffic':
-        return <TrafficAnalyzer />;
+        return <TrafficAnalyzer theme={theme} />;
       case 'simulate':
-        return <Simulator />;
+        return <Simulator theme={theme} />;
       case 'risk':
-        return <RiskMatrix />;
+        return <RiskMatrix theme={theme} />;
       case 'health':
-        return <ModelHealth />;
+        return <ModelHealth theme={theme} />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage theme={theme} />;
       default:
-        return <Dashboard stats={stats} setStats={setStats} alerts={alerts} navigateTo={navigateTo} />;
+        return <Landing navigateTo={navigateTo} theme={theme} />;
     }
   };
 
+  // Landing page renders full-bleed (no max-width constraint)
+  const isLanding = currentPage === 'landing';
+
+  // Locked strictly to Dark Cyber SOC Theme (#070b14)
+  const rootBg = '#070b14';
+  const rootColor = '#f8fafc';
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#070b13', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <Navbar currentPage={currentPage} navigateTo={navigateTo} onOpenDrawer={() => setIsDrawerOpen(true)} />
+    <div className="dark" style={{ minHeight: '100vh', backgroundColor: rootBg, color: rootColor, fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
+      <Navbar
+        currentPage={currentPage}
+        navigateTo={navigateTo}
+        onOpenDrawer={() => setIsDrawerOpen(true)}
+      />
       <SidebarDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} currentPage={currentPage} navigateTo={navigateTo} />
-      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.75rem 1.25rem' }}>
-        {renderPage()}
-      </main>
+      {isLanding ? (
+        <>{renderPage()}</>
+      ) : (
+        <main className="animate-slide-up" style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.75rem 1.25rem' }}>
+          {renderPage()}
+        </main>
+      )}
     </div>
   );
 }

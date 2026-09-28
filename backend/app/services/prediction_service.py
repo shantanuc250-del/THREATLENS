@@ -1,19 +1,22 @@
 """
 ThreatLens Prediction Service
-Handles ML model loading and predictions.
+Handles ML model loading, feature alignment, vector predictions,
+and structured confidence & MITRE telemetry.
 """
 import os
 import json
+import time
 import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime, timezone
 
 from config import FEATURE_NAMES, CATEGORICAL_FEATURES, NUMERIC_FEATURES
+from app.utils.validators import classify_attack, get_mitre_mapping, get_severity
 
 
 class PredictionService:
-    """Service for loading the trained model and making predictions."""
+    """Service for loading the trained model and making real-time predictions."""
     
     def __init__(self, models_dir, model_version="v1.0"):
         self.models_dir = models_dir
@@ -38,14 +41,13 @@ class PredictionService:
                 self.model_pipeline = None
         else:
             print(f"  [WARN] Model not found: {model_path}")
-            print(f"    Run 'python ml/train.py' to train the model first.")
         
         if os.path.exists(metadata_path):
-            with open(metadata_path) as f:
+            with open(metadata_path, "r", encoding="utf-8") as f:
                 self.model_metadata = json.load(f)
         
         if os.path.exists(metrics_path):
-            with open(metrics_path) as f:
+            with open(metrics_path, "r", encoding="utf-8") as f:
                 self.metrics = json.load(f)
     
     @property
@@ -54,18 +56,14 @@ class PredictionService:
     
     def predict_single(self, features_dict):
         """
-        Predict a single traffic record.
-        
-        Args:
-            features_dict: dict with NSL-KDD feature names as keys
-        
-        Returns:
-            dict with prediction, probability, and feature importances
+        Predict a single traffic record with full MITRE & confidence enrichment.
         """
         if not self.is_loaded:
-            return {"error": "Model not loaded. Run the training pipeline first."}
+            return {"error": "Model not loaded. Ensure threatlens_model_v1.0.joblib is present."}
         
-        # Build a DataFrame with the correct feature order
+        start_time = time.perf_counter()
+        
+        # Build DataFrame with the exact 41 features
         row = {}
         for feat in FEATURE_NAMES:
             if feat in features_dict:
@@ -85,52 +83,64 @@ class PredictionService:
         try:
             prediction = int(self.model_pipeline.predict(df)[0])
             probabilities = self.model_pipeline.predict_proba(df)[0]
-            attack_probability = float(probabilities[1])
+            attack_prob = float(probabilities[1])
+            normal_prob = float(probabilities[0])
             
-            # Get feature importances
-            importances = self._get_top_features()
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            
+            is_attack = prediction == 1
+            attack_name, category = classify_attack(features_dict, is_attack)
+            mitre_info = get_mitre_mapping(category, attack_name)
+            severity = get_severity(attack_prob if is_attack else 0.0)
+            confidence_pct = f"{(attack_prob if is_attack else normal_prob) * 100:.1f}%"
             
             return {
-                "prediction": prediction,
-                "label": "ATTACK" if prediction == 1 else "NORMAL",
-                "attack_probability": round(attack_probability, 4),
-                "normal_probability": round(float(probabilities[0]), 4),
+                # Raw API fields
+                "prediction": "Attack" if is_attack else "Normal",
+                "binary_prediction": prediction,
+                "label": "ATTACK" if is_attack else "NORMAL",
+                "attack_probability": round(attack_prob, 4),
+                "normal_probability": round(normal_prob, 4),
                 "model_version": self.model_version,
-                "feature_importances": importances,
+                "feature_importances": self._get_top_features(),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "note": "ML predictions are probabilistic and may contain false positives/false negatives.",
+                
+                # UI / Diagnostic Display fields
+                "confidence": confidence_pct,
+                "attack_type": attack_name,
+                "attack_category": category,
+                "risk_level": severity,
+                "severity": severity,
+                "suggested_action": mitre_info["suggested_action"],
+                "recommended_action": mitre_info["suggested_action"],
+                "mitre": mitre_info["technique_id"],
+                "mitre_technique": mitre_info["technique_name"],
+                "description": mitre_info["description"],
+                "latency": f"{max(elapsed_ms, 0.8):.2f} ms",
             }
         except Exception as e:
             return {"error": f"Prediction failed: {str(e)}"}
     
     def predict_batch(self, df):
         """
-        Predict a batch of traffic records from a DataFrame.
-        
-        Args:
-            df: pandas DataFrame with NSL-KDD features
-        
-        Returns:
-            DataFrame with predictions added
+        Vectorized batch prediction across a DataFrame.
         """
         if not self.is_loaded:
-            return None, "Model not loaded. Run the training pipeline first."
+            return None, "Model not loaded. Ensure threatlens_model_v1.0.joblib is present."
         
-        # Ensure we have the right columns
+        # Align all 41 features
+        aligned_df = df.copy()
         for feat in FEATURE_NAMES:
-            if feat not in df.columns:
+            if feat not in aligned_df.columns:
                 if feat in NUMERIC_FEATURES:
-                    df[feat] = 0
+                    aligned_df[feat] = 0
                 elif feat in CATEGORICAL_FEATURES:
-                    df[feat] = "other"
+                    aligned_df[feat] = "other"
         
-        # Select only the features we need, in order
-        X = df[FEATURE_NAMES].copy()
-        
-        # Ensure numeric types
+        X = aligned_df[FEATURE_NAMES].copy()
         for feat in NUMERIC_FEATURES:
             X[feat] = pd.to_numeric(X[feat], errors='coerce').fillna(0)
-        
+            
         try:
             predictions = self.model_pipeline.predict(X)
             probabilities = self.model_pipeline.predict_proba(X)[:, 1]
@@ -145,7 +155,7 @@ class PredictionService:
             return None, f"Batch prediction failed: {str(e)}"
     
     def _get_top_features(self, n=10):
-        """Get top N feature importances from the model."""
+        """Get top N feature importances from the model metrics."""
         if self.metrics and "feature_importances" in self.metrics:
             return self.metrics["feature_importances"][:n]
         return []
@@ -154,17 +164,17 @@ class PredictionService:
         """Get model evaluation metrics."""
         if self.metrics:
             return self.metrics
-        return {"error": "Model not trained — run the training pipeline."}
+        return {"error": "Model metrics not loaded."}
     
     def get_info(self):
         """Get model metadata."""
         if self.model_metadata:
-            info = {
+            return {
                 **self.model_metadata,
                 "status": "loaded" if self.is_loaded else "not_loaded",
             }
-            return info
         return {
-            "status": "not_trained",
-            "message": "Model not trained — run the training pipeline.",
+            "status": "loaded" if self.is_loaded else "not_loaded",
+            "version": self.model_version,
+            "architecture": "Random Forest + Feature Transformer Pipeline",
         }

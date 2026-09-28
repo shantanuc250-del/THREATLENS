@@ -1,0 +1,22 @@
+# Exclude large raw training datasets (only needed for offline model training)
+data/
+*.txt
+
+# Exclude frontend node_modules and dev files from serverless bundle
+frontend/node_modules/
+tests/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Development environments
+venv/
+.venv/
+env/
+.git/
+.github/

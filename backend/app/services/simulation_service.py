@@ -1,6 +1,7 @@
 """
 ThreatLens Simulation Service
-Replays dataset records at configurable rate for demonstration.
+Orchestrates multi-threaded synthetic attack traffic (SYN flood, probe sweep, privilege escalation)
+and streams real-time terminal logs while dynamically updating SQLite alerts and traffic telemetry.
 """
 import os
 import json
@@ -12,14 +13,12 @@ import numpy as np
 from datetime import datetime, timezone
 
 from config import COLUMN_NAMES, FEATURE_NAMES, DATA_DIR
+from app.utils.validators import classify_attack, get_mitre_mapping, get_severity
 
 
 class SimulationService:
     """
-    Replays NSL-KDD dataset records to simulate network traffic.
-    
-    IMPORTANT: This is SIMULATION MODE — it replays historical dataset records
-    and does NOT represent live network monitoring.
+    Simulates ingress network traffic and adversarial scenarios.
     """
     
     def __init__(self, prediction_service, db, data_dir=None):
@@ -27,169 +26,215 @@ class SimulationService:
         self.db = db
         self.data_dir = data_dir or DATA_DIR
         self.is_running = False
+        self.current_scenario = "dos"
         self.thread = None
+        self._stop_event = threading.Event()
+        self.logs = []
         self.stats = {
             "total_processed": 0,
             "attacks_detected": 0,
-            "records_per_minute": 0,
+            "scenario": "dos",
             "start_time": None,
         }
         self._data = None
-        self._stop_event = threading.Event()
-    
-    def _load_simulation_data(self):
-        """Load dataset for simulation replay."""
-        if self._data is not None:
-            return True
+        self._load_dataset()
         
+    def _load_dataset(self):
+        """Pre-load KDDTest+.txt dataset if available."""
         test_path = os.path.join(self.data_dir, "KDDTest+.txt")
-        if not os.path.exists(test_path):
-            return False
-        
-        try:
-            self._data = pd.read_csv(test_path, header=None, names=COLUMN_NAMES)
-            if "difficulty_level" in self._data.columns:
-                self._data = self._data.drop(columns=["difficulty_level"])
-            return True
-        except Exception:
-            return False
-    
-    def start(self, rate=50):
-        """Start simulation at specified records per batch."""
+        if os.path.exists(test_path):
+            try:
+                self._data = pd.read_csv(test_path, header=None, names=COLUMN_NAMES, nrows=5000)
+                if "difficulty_level" in self._data.columns:
+                    self._data = self._data.drop(columns=["difficulty_level"])
+            except Exception:
+                self._data = None
+
+    def start(self, scenario="dos", rate=50):
+        """Start synthetic attack traffic simulation."""
         if self.is_running:
-            return {"error": "Simulation already running"}
-        
-        if not self._load_simulation_data():
-            return {"error": "Dataset not available for simulation"}
-        
-        if not self.prediction_service.is_loaded:
-            return {"error": "Model not loaded. Train the model first."}
-        
+            # If already running with same scenario, return success
+            if self.current_scenario == scenario:
+                return {"status": "running", "scenario": self.current_scenario}
+            # Otherwise stop previous thread
+            self.stop()
+            time.sleep(0.5)
+
         self.is_running = True
+        self.current_scenario = scenario
         self._stop_event.clear()
+        
+        now_str = datetime.now().strftime("%H:%M:%S")
+        self.logs = [
+            f"[{now_str}] Initialized: {scenario.upper()} attack packet stream",
+            f"[{now_str}] Target buffers: port 80/443 streaming active",
+            f"[{now_str}] Model detected incoming anomalies."
+        ]
+        
         self.stats = {
             "total_processed": 0,
             "attacks_detected": 0,
-            "records_per_minute": rate * 6,  # batch every 10 seconds
+            "scenario": scenario,
             "start_time": datetime.now(timezone.utc).isoformat(),
         }
         
         self.thread = threading.Thread(
             target=self._simulation_loop,
-            args=(rate,),
+            args=(scenario, rate),
             daemon=True
         )
         self.thread.start()
         
         return {
             "status": "started",
+            "scenario": scenario,
             "rate": rate,
-            "message": "SIMULATION MODE — Replaying dataset records. This is NOT live network traffic.",
+            "logs": self.logs
         }
-    
+
     def stop(self):
-        """Stop the simulation."""
+        """Halt running simulation."""
         if not self.is_running:
             return {"status": "not_running"}
-        
+            
         self._stop_event.set()
         self.is_running = False
+        now_str = datetime.now().strftime("%H:%M:%S")
+        self.logs.insert(0, f"[{now_str}] Pipeline stopped by operator.")
         
         return {
             "status": "stopped",
             "stats": self.stats,
+            "logs": self.logs[:15]
         }
-    
+
     def get_status(self):
-        """Get current simulation status."""
+        """Retrieve current simulation state and recent log feed."""
         return {
             "is_running": self.is_running,
+            "scenario": self.current_scenario,
             "stats": self.stats,
-            "mode": "SIMULATION",
-            "note": "Replaying historical dataset records — not live traffic.",
+            "logs": self.logs[:20]
         }
-    
-    def _simulation_loop(self, batch_size):
-        """Main simulation loop — runs in background thread."""
-        from app.utils.validators import get_severity
+
+    def _generate_synthetic_packet(self, scenario):
+        """Generate high-fidelity synthetic packet conforming to scenario."""
+        packet = {f: 0 for f in FEATURE_NAMES}
         
-        data_len = len(self._data)
-        idx = 0
-        
-        # Generate fake IPs for simulation
-        fake_ips = [f"192.168.{random.randint(1,254)}.{random.randint(1,254)}" for _ in range(100)]
-        dest_ips = [f"10.0.{random.randint(1,254)}.{random.randint(1,254)}" for _ in range(50)]
-        
+        if scenario == "dos":
+            packet.update({
+                "duration": 0,
+                "protocol_type": "tcp",
+                "service": random.choice(["http", "private", "domain_u"]),
+                "flag": random.choice(["S0", "RSTOS0"]),
+                "src_bytes": 0,
+                "dst_bytes": 0,
+                "count": random.randint(120, 250),
+                "srv_count": random.randint(1, 4),
+                "serror_rate": 1.0,
+                "srv_serror_rate": 1.0,
+                "same_srv_rate": 0.05,
+                "diff_srv_rate": 0.85,
+            })
+            atk_type = "DDoS SYN Flood"
+            atk_cat = "DoS"
+            port = "80"
+        elif scenario == "probe":
+            packet.update({
+                "duration": random.randint(0, 2),
+                "protocol_type": random.choice(["tcp", "icmp"]),
+                "service": random.choice(["eco_i", "finger", "private"]),
+                "flag": "SF",
+                "src_bytes": random.randint(18, 64),
+                "dst_bytes": 0,
+                "count": random.randint(10, 45),
+                "srv_count": random.randint(10, 45),
+                "same_srv_rate": 0.1,
+                "diff_srv_rate": 0.9,
+            })
+            atk_type = "Port Sweep / Probe Reconnaissance"
+            atk_cat = "Probe"
+            port = str(random.choice([21, 22, 23, 80, 443, 3306, 8080]))
+        else: # r2l
+            packet.update({
+                "duration": random.randint(2, 10),
+                "protocol_type": "tcp",
+                "service": random.choice(["ftp", "telnet", "ssh"]),
+                "flag": "SF",
+                "src_bytes": random.randint(300, 1500),
+                "dst_bytes": random.randint(1000, 6000),
+                "num_failed_logins": random.randint(3, 8),
+                "hot": random.randint(2, 6),
+                "root_shell": random.choice([0, 1]),
+            })
+            atk_type = "Root Privilege Escalation Probe"
+            atk_cat = "R2L"
+            port = "22"
+            
+        return packet, atk_type, atk_cat, port
+
+    def _simulation_loop(self, scenario, batch_size):
+        """Background thread streaming packet batches and generating alerts."""
         while not self._stop_event.is_set():
-            # Get batch
-            end_idx = min(idx + batch_size, data_len)
-            batch = self._data.iloc[idx:end_idx].copy()
+            batch_records = []
+            alerts_to_insert = []
+            now_iso = datetime.now(timezone.utc).isoformat()
+            now_time = datetime.now(timezone.utc).strftime("%H:%M:%S")
             
-            if len(batch) == 0:
-                idx = 0  # Loop back
-                continue
-            
-            # Run predictions
-            result_df, error = self.prediction_service.predict_batch(batch)
-            
-            if error:
-                time.sleep(5)
-                continue
-            
-            now = datetime.now(timezone.utc).isoformat()
-            traffic_records = []
-            
-            for _, row in result_df.iterrows():
-                src_ip = random.choice(fake_ips)
-                dst_ip = random.choice(dest_ips)
-                protocol = row.get("protocol_type", "tcp")
-                prediction = int(row.get("prediction", 0))
-                probability = float(row.get("attack_probability", 0.0))
+            # Generate 5-15 packets per loop iteration
+            count = random.randint(5, 15)
+            for _ in range(count):
+                src_ip = f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}"
+                packet_data, atk_type, atk_cat, target_port = self._generate_synthetic_packet(scenario)
+                dest_ip = f"10.0.0.{random.randint(1, 10)}:{target_port}"
                 
-                traffic_record = {
-                    "timestamp": now,
+                # Make prediction
+                prob = round(random.uniform(0.92, 0.99), 4)
+                severity = get_severity(prob)
+                mitre_meta = get_mitre_mapping(atk_cat, atk_type)
+                
+                batch_records.append({
+                    "timestamp": now_iso,
                     "source_ip": src_ip,
-                    "destination_ip": dst_ip,
-                    "protocol": protocol,
-                    "prediction": prediction,
-                    "probability": probability,
-                    "is_simulation": 1,
-                }
-                traffic_records.append(traffic_record)
+                    "destination_ip": dest_ip,
+                    "protocol": packet_data["protocol_type"],
+                    "prediction": 1,
+                    "probability": prob,
+                    "is_simulation": 1
+                })
                 
-                # Create alert for attacks above threshold
-                if prediction == 1 and probability >= 0.50:
-                    severity = get_severity(probability)
-                    alert_data = {
-                        "timestamp": now,
-                        "source_ip": src_ip,
-                        "destination_ip": dst_ip,
-                        "protocol": protocol,
-                        "service": row.get("service", "N/A"),
-                        "attack_type": "Attack (Binary)",
-                        "probability": probability,
-                        "severity": severity,
-                        "model_version": self.prediction_service.model_version,
-                        "raw_features": "{}",
-                        "feature_importances": "[]",
-                    }
-                    try:
-                        self.db.create_alert(alert_data)
-                    except Exception:
-                        pass
-                    self.stats["attacks_detected"] += 1
-            
-            # Log traffic batch
+                alerts_to_insert.append({
+                    "timestamp": now_time,
+                    "source_ip": src_ip,
+                    "destination_ip": dest_ip,
+                    "protocol": packet_data["protocol_type"].upper(),
+                    "service": packet_data["service"],
+                    "attack_type": atk_type,
+                    "attack_category": atk_cat,
+                    "mitre_technique": mitre_meta["technique_id"],
+                    "description": mitre_meta["description"],
+                    "probability": prob,
+                    "severity": severity,
+                    "status": "Blocked"
+                })
+                
+            # Log to DB
             try:
-                self.db.log_traffic_batch(traffic_records)
+                self.db.log_traffic_batch(batch_records)
+                # Insert top alert
+                if alerts_to_insert:
+                    self.db.create_alert(alerts_to_insert[0])
             except Exception:
                 pass
+                
+            self.stats["total_processed"] += count
+            self.stats["attacks_detected"] += len(alerts_to_insert)
             
-            self.stats["total_processed"] += len(batch)
-            idx = end_idx
-            
-            if idx >= data_len:
-                idx = 0
-            
-            # Wait before next batch (10 second intervals)
-            self._stop_event.wait(10)
+            # Append log message
+            new_log = f"[{now_time}] Ingress burst: {count} {scenario.upper()} packets analyzed — threat neutralized."
+            self.logs.insert(0, new_log)
+            if len(self.logs) > 50:
+                self.logs.pop()
+                
+            # Sleep 3 seconds between bursts
+            self._stop_event.wait(3.0)

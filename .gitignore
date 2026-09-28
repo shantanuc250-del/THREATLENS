@@ -1,6 +1,26 @@
-
+# Node dependencies
 node_modules/
 frontend/node_modules/
 
-node_modules/
-frontend/node_modules/
+# Python cache & build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# SQLite WAL and temp files
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment & OS
+.env
+.env.*
+.DS_Store
+Thumbs.db
