@@ -3,18 +3,15 @@ import sys
 
 # Add root, backend, and ml directories to python path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
 backend_dir = os.path.join(BASE_DIR, "backend")
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-
 ml_dir = os.path.join(BASE_DIR, "ml")
-if ml_dir not in sys.path:
-    sys.path.insert(0, ml_dir)
 
-from backend.app import create_app
+for d in [backend_dir, BASE_DIR, ml_dir]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
+
+# Import directly from app so sys.modules['app'] is the single instance
+from app import create_app
 
 app = create_app()
 

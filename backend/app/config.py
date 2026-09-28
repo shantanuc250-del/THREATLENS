@@ -10,9 +10,10 @@ class Config:
     """Application configuration."""
     SECRET_KEY = os.environ.get("SECRET_KEY", "threatlens-dev-key-change-in-production")
     
-    # Database path — use /tmp on Vercel serverless environment
-    if os.environ.get("VERCEL"):
-        DATABASE_PATH = os.path.join("/tmp", "threatlens.db")
+    # Database path — use temp directory on Vercel serverless or read-only environments
+    import tempfile
+    if os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(BASE_DIR, os.W_OK):
+        DATABASE_PATH = os.path.join(tempfile.gettempdir(), "threatlens.db")
     else:
         DATABASE_PATH = os.path.join(BASE_DIR, "threatlens.db")
     

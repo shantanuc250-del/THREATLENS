@@ -3,8 +3,10 @@ import axios from 'axios';
 import {
   Upload, Play, RotateCcw, CheckCircle, AlertCircle
 } from 'lucide-react';
+import themeColors from '../utils/themeColors';
 
-export default function TrafficAnalyzer() {
+export default function TrafficAnalyzer({ theme = 'dark' }) {
+  const c = themeColors(theme);
   const fileInputRef = useRef(null);
 
   // CSV State
@@ -163,23 +165,33 @@ export default function TrafficAnalyzer() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div>
-        <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>Traffic Analysis & Ingestion</h2>
-        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>Single flow inspection & bulk CSV capture scanning.</p>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: c.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>Traffic Analysis & Ingestion</h2>
+        <p style={{ fontSize: '0.78rem', color: c.textSecondary, margin: '0.2rem 0 0 0' }}>Single flow inspection & bulk CSV capture scanning.</p>
       </div>
 
       {/* CSV Batch Upload Box */}
-      <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1.25rem' }}>
-        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: 600 }}>Batch CSV File Processing</h3>
+      <div style={{
+        backgroundColor: c.cardBg,
+        border: `1px solid ${c.border}`,
+        borderRadius: '16px',
+        padding: '1.5rem',
+        boxShadow: c.shadowSm,
+        transition: c.transition
+      }}>
+        <h3 style={{ margin: '0 0 0.6rem 0', fontSize: '0.92rem', fontWeight: 700, color: c.textPrimary }}>Batch CSV File Processing</h3>
         <div
           onClick={() => fileInputRef.current && fileInputRef.current.click()}
           style={{
-            border: '2px dashed #233555',
-            borderRadius: '6px',
-            padding: '1.5rem',
+            border: `2px dashed ${c.borderStrong}`,
+            borderRadius: '12px',
+            padding: '1.75rem',
             textAlign: 'center',
             cursor: 'pointer',
-            backgroundColor: '#090d16'
+            backgroundColor: c.isDark ? '#060a12' : '#f8fafc',
+            transition: 'border-color 0.2s ease, background-color 0.2s ease'
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.borderStrong; }}
         >
           <input
             type="file"
@@ -188,48 +200,55 @@ export default function TrafficAnalyzer() {
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />
-          <Upload size={24} color="#06b6d4" style={{ margin: '0 auto 0.4rem auto' }} />
-          <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600 }}>
+          <Upload size={26} color="#2563eb" style={{ margin: '0 auto 0.5rem auto' }} />
+          <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: c.textPrimary }}>
             {uploadedFile ? uploadedFile.name : 'Select or drop network flow CSV capture'}
           </p>
-          <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.7rem', color: '#64748b' }}>
-            Accepts standard NSL-KDD capture columns
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.72rem', color: c.textSecondary }}>
+            Accepts standard NSL-KDD capture columns (duration, protocol_type, service, flag, src_bytes...)
           </p>
         </div>
 
         {uploadedFile && (
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             <button
               onClick={executeCsvBatchPredict}
               disabled={isProcessingCsv}
               style={{
                 flex: 1,
-                backgroundColor: '#0284c7',
+                backgroundColor: '#2563eb',
                 border: 'none',
-                borderRadius: '5px',
+                borderRadius: '8px',
                 color: '#fff',
-                padding: '0.55rem',
-                fontSize: '0.8rem',
-                fontWeight: 600,
+                padding: '0.6rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.4rem',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px -3px rgba(37,99,235,0.4)',
+                transition: 'filter 0.2s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
             >
               <Play size={14} /> {isProcessingCsv ? 'Evaluating Batch Rows...' : 'Run Bulk Model Inference'}
             </button>
             <button
               onClick={() => { setUploadedFile(null); setCsvPreview([]); setBatchResults(null); }}
               style={{
-                backgroundColor: '#16233b',
-                border: '1px solid #233555',
-                borderRadius: '5px',
-                color: '#94a3b8',
-                padding: '0.55rem 0.9rem',
-                cursor: 'pointer'
+                backgroundColor: c.btnSecondaryBg,
+                border: `1px solid ${c.border}`,
+                borderRadius: '8px',
+                color: c.textSecondary,
+                padding: '0.6rem 1rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = c.textPrimary; e.currentTarget.style.borderColor = c.borderStrong; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = c.textSecondary; e.currentTarget.style.borderColor = c.border; }}
             >
               <RotateCcw size={14} />
             </button>
@@ -237,22 +256,22 @@ export default function TrafficAnalyzer() {
         )}
 
         {csvPreview.length > 0 && (
-          <div style={{ marginTop: '1rem', borderTop: '1px solid #1a263e', paddingTop: '0.75rem' }}>
-            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Parsed Stream Preview (First 5 Rows)</span>
-            <div style={{ overflowX: 'auto', marginTop: '0.4rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.7rem' }}>
+          <div style={{ marginTop: '1.25rem', borderTop: `1px solid ${c.borderLight}`, paddingTop: '0.85rem' }}>
+            <span style={{ fontSize: '0.74rem', color: c.textSecondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Parsed Stream Preview (First 5 Rows)</span>
+            <div style={{ overflowX: 'auto', marginTop: '0.5rem', borderRadius: '8px', border: `1px solid ${c.borderLight}` }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#141f33', color: '#94a3b8' }}>
+                  <tr style={{ backgroundColor: c.tableHeaderBg, color: c.textSecondary }}>
                     {Object.keys(csvPreview[0]).map((h, i) => (
-                      <th key={i} style={{ padding: '5px 8px', borderBottom: '1px solid #1a263e' }}>{h}</th>
+                      <th key={i} style={{ padding: '6px 10px', borderBottom: `1px solid ${c.borderLight}`, textAlign: 'left' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {csvPreview.map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #141f33' }}>
+                    <tr key={i} style={{ borderBottom: `1px solid ${c.rowDivider}`, backgroundColor: c.cardBg }}>
                       {Object.values(row).map((v, idx) => (
-                        <td key={idx} style={{ padding: '5px 8px', fontFamily: 'monospace' }}>{v}</td>
+                        <td key={idx} style={{ padding: '6px 10px', fontFamily: 'monospace', color: c.textBody }}>{v}</td>
                       ))}
                     </tr>
                   ))}
@@ -264,56 +283,84 @@ export default function TrafficAnalyzer() {
 
         {batchResults && (
           <div style={{
-            marginTop: '1rem',
-            backgroundColor: '#090d16',
-            border: '1px solid #10b981',
-            borderRadius: '6px',
-            padding: '1rem',
+            marginTop: '1.25rem',
+            backgroundColor: c.isDark ? '#060a12' : '#f8fafc',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '12px',
+            padding: '1.1rem',
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '0.75rem'
+            gap: '0.85rem'
           }}>
             <div>
-              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>FLOWS ANALYZED</span>
-              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.1rem' }}>{batchResults.total_analyzed}</h4>
+              <span style={{ fontSize: '0.68rem', color: c.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>FLOWS ANALYZED</span>
+              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.2rem', fontWeight: 800, color: c.textPrimary }}>{batchResults.total_analyzed}</h4>
             </div>
             <div>
-              <span style={{ fontSize: '0.68rem', color: '#10b981' }}>BENIGN SAMPLES</span>
-              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.1rem', color: '#10b981' }}>{batchResults.normal_count}</h4>
+              <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase' }}>BENIGN SAMPLES</span>
+              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.2rem', fontWeight: 800, color: '#10b981' }}>{batchResults.normal_count}</h4>
             </div>
             <div>
-              <span style={{ fontSize: '0.68rem', color: '#ef4444' }}>THREATS ISOLATED</span>
-              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.1rem', color: '#ef4444' }}>{batchResults.anomaly_count}</h4>
+              <span style={{ fontSize: '0.68rem', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase' }}>THREATS ISOLATED</span>
+              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1.2rem', fontWeight: 800, color: '#ef4444' }}>{batchResults.anomaly_count}</h4>
             </div>
             <div>
-              <span style={{ fontSize: '0.68rem', color: '#f59e0b' }}>TOP VECTOR</span>
-              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', color: '#f59e0b' }}>DoS SYN Flood</h4>
+              <span style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase' }}>TOP VECTOR</span>
+              <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '1rem', fontWeight: 800, color: '#f59e0b' }}>DoS SYN Flood</h4>
             </div>
           </div>
         )}
       </div>
 
       {/* Feature Packet Inspector */}
-      <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Manual Packet Feature Inspector</h3>
+      <div style={{
+        backgroundColor: c.cardBg,
+        border: `1px solid ${c.border}`,
+        borderRadius: '16px',
+        padding: '1.5rem',
+        boxShadow: c.shadowSm,
+        transition: c.transition
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: c.textPrimary }}>Manual Packet Feature Inspector</h3>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.72rem', color: c.textSecondary }}>Configure 11 primary flow attributes or load scenario presets.</p>
+          </div>
           <div style={{ display: 'flex', gap: '0.35rem' }}>
-            <button onClick={() => loadPreset('normal')} style={{ backgroundColor: '#16233b', border: '1px solid #233555', color: '#94a3b8', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}>Normal</button>
-            <button onClick={() => loadPreset('dos')} style={{ backgroundColor: '#16233b', border: '1px solid #233555', color: '#94a3b8', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}>DoS</button>
-            <button onClick={() => loadPreset('probe')} style={{ backgroundColor: '#16233b', border: '1px solid #233555', color: '#94a3b8', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}>Probe</button>
-            <button onClick={() => loadPreset('r2l')} style={{ backgroundColor: '#16233b', border: '1px solid #233555', color: '#94a3b8', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', cursor: 'pointer' }}>R2L</button>
+            {['normal', 'dos', 'probe', 'r2l'].map((preset) => (
+              <button
+                key={preset}
+                onClick={() => loadPreset(preset)}
+                style={{
+                  backgroundColor: c.btnSecondaryBg,
+                  border: `1px solid ${c.border}`,
+                  color: c.textPrimary,
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.textPrimary; }}
+              >
+                {preset}
+              </button>
+            ))}
           </div>
         </div>
 
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '0.75rem',
-          marginBottom: '1rem'
+          gap: '0.85rem',
+          marginBottom: '1.25rem'
         }}>
           {Object.keys(formData).map((key) => (
             <div key={key}>
-              <label style={{ display: 'block', fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem', fontWeight: 600 }}>
+              <label style={{ display: 'block', fontSize: '0.68rem', color: c.textMuted, textTransform: 'uppercase', marginBottom: '0.3rem', fontWeight: 700, letterSpacing: '0.04em' }}>
                 {key.replace('_', ' ')}
               </label>
               <input
@@ -322,15 +369,18 @@ export default function TrafficAnalyzer() {
                 onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
                 style={{
                   width: '100%',
-                  padding: '0.45rem 0.6rem',
-                  backgroundColor: '#090d16',
-                  border: '1px solid #1e2e4a',
-                  borderRadius: '4px',
-                  color: '#fff',
-                  fontSize: '0.8rem',
+                  padding: '0.5rem 0.65rem',
+                  backgroundColor: c.inputBg,
+                  border: `1px solid ${c.border}`,
+                  borderRadius: '8px',
+                  color: c.textPrimary,
+                  fontSize: '0.82rem',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s ease'
                 }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#2563eb'}
+                onBlur={(e) => e.currentTarget.style.borderColor = c.border}
               />
             </div>
           ))}
@@ -342,19 +392,23 @@ export default function TrafficAnalyzer() {
             disabled={predictLoading}
             style={{
               flex: 1,
-              backgroundColor: '#0284c7',
+              backgroundColor: '#2563eb',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '8px',
               color: '#fff',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              padding: '0.65rem',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              padding: '0.7rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer'
+              gap: '0.45rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px -3px rgba(37,99,235,0.4)',
+              transition: 'filter 0.2s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
           >
             <Play size={15} /> {predictLoading ? 'Scanning...' : 'Classify Packet'}
           </button>
@@ -364,13 +418,16 @@ export default function TrafficAnalyzer() {
               setPredictionResult(null);
             }}
             style={{
-              backgroundColor: '#16233b',
-              border: '1px solid #233555',
-              borderRadius: '5px',
-              color: '#94a3b8',
-              padding: '0 0.8rem',
-              cursor: 'pointer'
+              backgroundColor: c.btnSecondaryBg,
+              border: `1px solid ${c.border}`,
+              borderRadius: '8px',
+              color: c.textSecondary,
+              padding: '0 0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = c.textPrimary; e.currentTarget.style.borderColor = c.borderStrong; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = c.textSecondary; e.currentTarget.style.borderColor = c.border; }}
           >
             <RotateCcw size={15} />
           </button>
@@ -378,46 +435,50 @@ export default function TrafficAnalyzer() {
 
         {predictionResult && (
           <div style={{
-            marginTop: '1rem',
-            backgroundColor: '#090d16',
+            marginTop: '1.25rem',
+            backgroundColor: c.isDark ? '#060a12' : '#f8fafc',
             border: `1px solid ${predictionResult.prediction === 'Normal' ? '#10b981' : '#ef4444'}`,
-            borderRadius: '6px',
-            padding: '1rem',
+            borderRadius: '12px',
+            padding: '1.15rem',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            boxShadow: c.shadowSm
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
               {predictionResult.prediction === 'Normal' ? (
-                <CheckCircle color="#10b981" size={22} />
+                <CheckCircle color="#10b981" size={24} />
               ) : (
-                <AlertCircle color="#ef4444" size={22} />
+                <AlertCircle color="#ef4444" size={24} />
               )}
               <div>
-                <span style={{ fontSize: '0.68rem', color: '#64748b' }}>VERDICT</span>
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.68rem', color: c.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>VERDICT</span>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: c.textPrimary }}>
                   {predictionResult.prediction} ({predictionResult.attack_type})
                 </h4>
               </div>
             </div>
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#38bdf8' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: c.accentCyan, fontWeight: 700 }}>
                 Confidence: {predictionResult.confidence}
               </span>
-              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Action: {predictionResult.suggested_action}</span>
+              <span style={{ fontSize: '0.72rem', color: c.textSecondary }}>Action: {predictionResult.suggested_action}</span>
               {predictionResult.prediction !== 'Normal' && (
                 <button
                   onClick={() => alert(`Edge Firewall Rule Applied: Blocked inbound flow vector [${predictionResult.attack_type}].`)}
                   style={{
                     backgroundColor: '#ef4444',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     color: '#fff',
-                    padding: '3px 8px',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
+                    padding: '4px 10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    marginTop: '2px'
+                    marginTop: '2px',
+                    boxShadow: '0 2px 8px rgba(239,68,68,0.3)'
                   }}
                 >
                   Deploy Firewall Block

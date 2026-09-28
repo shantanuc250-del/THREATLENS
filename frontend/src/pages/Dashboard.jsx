@@ -3,8 +3,10 @@ import axios from 'axios';
 import {
   Activity, AlertTriangle, ShieldCheck, Zap, RefreshCw
 } from 'lucide-react';
+import themeColors from '../utils/themeColors';
 
-export default function Dashboard({ stats = {}, setStats = () => {}, alerts = [], navigateTo = () => {} }) {
+export default function Dashboard({ stats = {}, setStats = () => {}, alerts = [], navigateTo = () => {}, theme = 'dark' }) {
+  const c = themeColors(theme);
   const currentStats = stats || {};
   const safeAlerts = Array.isArray(alerts) ? alerts : [];
 
@@ -84,50 +86,69 @@ export default function Dashboard({ stats = {}, setStats = () => {}, alerts = []
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>Security Operations Monitor</h2>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: c.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>Security Operations Monitor</h2>
+          <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: c.textSecondary }}>Live telemetry streaming, automated vector containment, and ingress flow rates.</p>
+        </div>
         <button
           onClick={handleSync}
           style={{
-            backgroundColor: '#16233b',
-            border: '1px solid #233555',
-            color: '#94a3b8',
-            padding: '4px 10px',
-            borderRadius: '4px',
+            backgroundColor: c.btnSecondaryBg,
+            border: `1px solid ${c.border}`,
+            color: c.textSecondary,
+            padding: '6px 12px',
+            borderRadius: '8px',
             fontSize: '0.75rem',
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '0.3rem',
-            cursor: 'pointer'
+            gap: '0.4rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = c.textPrimary; e.currentTarget.style.borderColor = c.borderStrong; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = c.textSecondary; e.currentTarget.style.borderColor = c.border; }}
         >
-          <RefreshCw size={12} /> Sync Feed
+          <RefreshCw size={13} /> Sync Feed
         </button>
       </div>
 
-      {/* Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem' }}>
+      {/* Metrics Row (Rounded-2xl glass-cards with subtle lift) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.9rem' }}>
         {[
-          { label: 'Ingress Packets', val: currentStats.totalTraffic || '142,920', icon: Activity, color: '#06b6d4' },
-          { label: 'Attacks Blocked', val: currentStats.threatsBlocked || '389', icon: AlertTriangle, color: '#ef4444' },
-          { label: 'Network Health', val: currentStats.networkHealth || currentStats.health || '99.4%', icon: ShieldCheck, color: '#10b981' },
-          { label: 'Simulations Active', val: currentStats.activeSims || '1', icon: Zap, color: '#f59e0b' }
+          { label: 'Ingress Packets', val: currentStats.totalTraffic || '142,920', icon: Activity, color: '#06b6d4', iconBg: 'rgba(6, 182, 212, 0.12)' },
+          { label: 'Attacks Blocked', val: currentStats.threatsBlocked || '389', icon: AlertTriangle, color: '#ef4444', iconBg: 'rgba(239, 68, 68, 0.12)' },
+          { label: 'Network Health', val: currentStats.networkHealth || currentStats.health || '99.4%', icon: ShieldCheck, color: '#10b981', iconBg: 'rgba(16, 185, 129, 0.12)' },
+          { label: 'Simulations Active', val: currentStats.activeSims || '1', icon: Zap, color: '#f59e0b', iconBg: 'rgba(245, 158, 11, 0.12)' }
         ].map((m, idx) => {
           const Icon = m.icon;
           return (
-            <div key={idx} style={{
-              backgroundColor: '#0d1525',
-              border: '1px solid #1a263e',
-              borderRadius: '8px',
-              padding: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
+            <div
+              key={idx}
+              className="landing-hover-card"
+              style={{
+                backgroundColor: c.cardBg,
+                border: `1px solid ${c.border}`,
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: c.shadowSm,
+                transition: c.transition
+              }}
+            >
               <div>
-                <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{m.label}</p>
-                <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.35rem', fontWeight: 700 }}>{m.val}</h3>
+                <p style={{ margin: 0, fontSize: '0.72rem', color: c.textMuted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>{m.label}</p>
+                <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.45rem', fontWeight: 800, color: c.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{m.val}</h3>
               </div>
-              <Icon size={20} color={m.color} />
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '10px',
+                backgroundColor: m.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: m.color
+              }}>
+                <Icon size={20} />
+              </div>
             </div>
           );
         })}
@@ -135,10 +156,23 @@ export default function Dashboard({ stats = {}, setStats = () => {}, alerts = []
 
       {/* Graphs Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-        <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Real-Time Throughput</span>
-            <span style={{ fontSize: '0.7rem', color: '#10b981' }}>Live 60s Stream</span>
+        <div className="landing-hover-card" style={{
+          backgroundColor: c.cardBg,
+          border: `1px solid ${c.border}`,
+          borderRadius: '16px',
+          padding: '1.25rem',
+          boxShadow: c.shadowSm,
+          transition: c.transition
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: c.textPrimary }}>Real-Time Throughput</span>
+            <span style={{
+              fontSize: '0.7rem', fontWeight: 700, color: '#10b981',
+              backgroundColor: c.okBgSoft, padding: '2px 8px', borderRadius: '9999px',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}>
+              ● Live 60s Stream
+            </span>
           </div>
           <svg viewBox="0 0 300 80" style={{ width: '100%', height: '80px', overflow: 'visible' }}>
             <defs>
@@ -150,44 +184,51 @@ export default function Dashboard({ stats = {}, setStats = () => {}, alerts = []
             <path d={dArea} fill="url(#curveGrad)" />
             <path d={dLine} fill="none" stroke="#06b6d4" strokeWidth="2.5" />
           </svg>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748b', marginTop: '0.4rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: c.textMuted, marginTop: '0.5rem', fontWeight: 600 }}>
             <span>T-60s</span>
             <span>T-30s</span>
             <span>Current</span>
           </div>
         </div>
 
-        <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Attack Class Distribution</span>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{totalAttacks} Attacks Neutralized</span>
+        <div className="landing-hover-card" style={{
+          backgroundColor: c.cardBg,
+          border: `1px solid ${c.border}`,
+          borderRadius: '16px',
+          padding: '1.25rem',
+          boxShadow: c.shadowSm,
+          transition: c.transition
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: c.textPrimary }}>Attack Class Distribution</span>
+            <span style={{ fontSize: '0.72rem', color: c.textSecondary, fontWeight: 600 }}>{totalAttacks} Attacks Neutralized</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.75rem' }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span>DoS / SYN Floods ({dosPct}%)</span>
-                <span style={{ color: '#ef4444' }}>{dosNum}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontWeight: 600, color: c.textBody }}>DoS / SYN Floods ({dosPct}%)</span>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>{dosNum}</span>
               </div>
-              <div style={{ height: '6px', backgroundColor: '#16233b', borderRadius: '3px' }}>
-                <div style={{ width: `${dosPct}%`, height: '100%', backgroundColor: '#ef4444', borderRadius: '3px', transition: 'width 0.5s ease' }}></div>
+              <div style={{ height: '7px', backgroundColor: c.barTrack, borderRadius: '4px' }}>
+                <div style={{ width: `${dosPct}%`, height: '100%', backgroundColor: '#ef4444', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
               </div>
             </div>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span>Port Probes & Scans ({probePct}%)</span>
-                <span style={{ color: '#f59e0b' }}>{probeNum}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontWeight: 600, color: c.textBody }}>Port Probes & Scans ({probePct}%)</span>
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>{probeNum}</span>
               </div>
-              <div style={{ height: '6px', backgroundColor: '#16233b', borderRadius: '3px' }}>
-                <div style={{ width: `${probePct}%`, height: '100%', backgroundColor: '#f59e0b', borderRadius: '3px', transition: 'width 0.5s ease' }}></div>
+              <div style={{ height: '7px', backgroundColor: c.barTrack, borderRadius: '4px' }}>
+                <div style={{ width: `${probePct}%`, height: '100%', backgroundColor: '#f59e0b', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
               </div>
             </div>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span>R2L / Privilege Esc ({r2lPct}%)</span>
-                <span style={{ color: '#38bdf8' }}>{r2lNum}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontWeight: 600, color: c.textBody }}>R2L / Privilege Esc ({r2lPct}%)</span>
+                <span style={{ color: '#0284c7', fontWeight: 700 }}>{r2lNum}</span>
               </div>
-              <div style={{ height: '6px', backgroundColor: '#16233b', borderRadius: '3px' }}>
-                <div style={{ width: `${r2lPct}%`, height: '100%', backgroundColor: '#38bdf8', borderRadius: '3px', transition: 'width 0.5s ease' }}></div>
+              <div style={{ height: '7px', backgroundColor: c.barTrack, borderRadius: '4px' }}>
+                <div style={{ width: `${r2lPct}%`, height: '100%', backgroundColor: '#0284c7', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
               </div>
             </div>
           </div>
@@ -196,61 +237,74 @@ export default function Dashboard({ stats = {}, setStats = () => {}, alerts = []
 
       {/* Quick Actions */}
       <div style={{
-        backgroundColor: '#0d1525',
-        border: '1px solid #1a263e',
-        borderRadius: '8px',
-        padding: '0.85rem 1.25rem',
+        backgroundColor: c.cardBg,
+        border: `1px solid ${c.border}`,
+        borderRadius: '16px',
+        padding: '1rem 1.4rem',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
+        boxShadow: c.shadowSm,
+        transition: c.transition
       }}>
         <div>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Quick Operations</span>
-          <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b' }}>Directly trigger an action or analyze traffic captures.</p>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: c.textPrimary }}>Quick Operations</span>
+          <p style={{ margin: 0, fontSize: '0.74rem', color: c.textSecondary }}>Directly trigger an action or analyze traffic captures.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={() => navigateTo('traffic')}
             style={{
-              backgroundColor: '#0284c7',
+              backgroundColor: '#2563eb',
               border: 'none',
-              borderRadius: '4px',
+              borderRadius: '8px',
               color: '#fff',
-              padding: '0.45rem 0.85rem',
+              padding: '0.5rem 1rem',
               fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer'
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
           >
             Packet Inspector
           </button>
           <button
             onClick={() => navigateTo('alerts')}
             style={{
-              backgroundColor: '#16233b',
-              border: '1px solid #283e66',
-              borderRadius: '4px',
-              color: '#f1f5f9',
-              padding: '0.45rem 0.85rem',
+              backgroundColor: c.btnSecondaryBg,
+              border: `1px solid ${c.border}`,
+              borderRadius: '8px',
+              color: c.textPrimary,
+              padding: '0.5rem 1rem',
               fontSize: '0.78rem',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderStrong; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
           >
             All Alerts
           </button>
           <button
             onClick={() => navigateTo('simulate')}
             style={{
-              backgroundColor: '#16233b',
-              border: '1px solid #283e66',
-              borderRadius: '4px',
-              color: '#f1f5f9',
-              padding: '0.45rem 0.85rem',
+              backgroundColor: c.btnSecondaryBg,
+              border: `1px solid ${c.border}`,
+              borderRadius: '8px',
+              color: c.textPrimary,
+              padding: '0.5rem 1rem',
               fontSize: '0.78rem',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = c.borderStrong; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = c.border; }}
           >
             Simulator
           </button>
@@ -258,29 +312,46 @@ export default function Dashboard({ stats = {}, setStats = () => {}, alerts = []
       </div>
 
       {/* Recent Alert Feed */}
-      <div style={{ backgroundColor: '#0d1525', border: '1px solid #1a263e', borderRadius: '8px', overflow: 'hidden' }}>
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #1a263e' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Recent Detections</span>
+      <div style={{
+        backgroundColor: c.cardBg,
+        border: `1px solid ${c.border}`,
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: c.shadowSm,
+        transition: c.transition
+      }}>
+        <div style={{
+          padding: '0.85rem 1.25rem',
+          borderBottom: `1px solid ${c.borderLight}`,
+          backgroundColor: c.tableHeaderBg,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: c.textPrimary }}>Recent Detections</span>
+          <span style={{ fontSize: '0.7rem', color: c.textMuted }}>Latest 3 events</span>
         </div>
         {safeAlerts.slice(0, 3).map((a) => (
           <div key={a.id} style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.65rem 1rem',
-            borderBottom: '1px solid #141f33',
-            fontSize: '0.8rem'
+            padding: '0.75rem 1.25rem',
+            borderBottom: `1px solid ${c.rowDivider}`,
+            fontSize: '0.8rem',
+            transition: 'background-color 0.15s ease'
           }}>
-            <span style={{ fontFamily: 'monospace', color: '#64748b' }}>{a.time}</span>
-            <span style={{ fontWeight: 600 }}>{a.type}</span>
-            <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{a.source}</span>
+            <span style={{ fontFamily: 'monospace', color: c.textMuted }}>{a.time}</span>
+            <span style={{ fontWeight: 700, color: c.textPrimary }}>{a.type}</span>
+            <span style={{ fontFamily: 'monospace', color: c.accentCyan, fontWeight: 600 }}>{a.source}</span>
             <span style={{
-              padding: '2px 8px',
-              borderRadius: '4px',
-              fontSize: '0.7rem',
+              padding: '3px 9px',
+              borderRadius: '9999px',
+              fontSize: '0.68rem',
               fontWeight: 700,
-              backgroundColor: a.status === 'Blocked' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              color: a.status === 'Blocked' ? '#ef4444' : '#f59e0b'
+              backgroundColor: a.status === 'Blocked' ? c.dangerBgSoft : c.warnBgSoft,
+              color: a.status === 'Blocked' ? '#ef4444' : '#f59e0b',
+              border: `1px solid ${a.status === 'Blocked' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
             }}>
               {a.status}
             </span>
