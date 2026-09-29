@@ -77,7 +77,7 @@ def predict_single():
                 "description": result["description"],
                 "probability": result["attack_probability"],
                 "severity": result["risk_level"],
-                "status": "Blocked",
+                "status": "Open",
                 "model_version": result["model_version"],
                 "raw_features": json.dumps({k: v for k, v in sanitized_data.items() if k in [
                     "duration", "protocol_type", "service", "flag",

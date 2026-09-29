@@ -1,26 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Layout components
 import Navbar from './components/Navbar';
-import SidebarDrawer from './components/SidebarDrawer';
-
-// Page components
-import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
-import Alerts from './pages/Alerts';
 import TrafficAnalyzer from './pages/TrafficAnalyzer';
-import Simulator from './pages/Simulator';
-import RiskMatrix from './pages/RiskMatrix';
+import Alerts from './pages/Alerts';
 import ModelHealth from './pages/ModelHealth';
-import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('landing');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  // Locked strictly to Dark Cyber-Defense SOC Theme
-  const theme = 'dark';
+  const [currentPage, setCurrentPage] = useState('dashboard');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -29,137 +15,77 @@ export default function App() {
     } catch {}
   }, []);
 
-  // SOC Stats (shared with Dashboard)
-  const [stats, setStats] = useState({
-    totalTraffic: '142,920',
-    threatsBlocked: '389',
-    networkHealth: '99.4%',
-    activeSims: '1',
-    dosCount: '226',
-    probeCount: '101',
-    r2lCount: '62'
-  });
-
-  // Alerts (shared with Dashboard + Alerts page)
-  const [alerts] = useState([
-    {
-      id: 'AL-902',
-      time: '14:22:01',
-      type: 'DDoS SYN Flood',
-      source: '192.168.1.105',
-      destination: '10.0.0.1:80',
-      protocol: 'TCP',
-      risk: 'Critical',
-      status: 'Blocked',
-      mitre: 'T1498.001',
-      description: 'Massive volume of incomplete TCP handshakes starving socket buffer pools.'
-    },
-    {
-      id: 'AL-901',
-      time: '14:18:40',
-      type: 'Port Sweep / Probe',
-      source: '10.0.0.18',
-      destination: '10.0.0.1:20-443',
-      protocol: 'TCP',
-      risk: 'Medium',
-      status: 'Flagged',
-      mitre: 'T1046',
-      description: 'Sequential rapid SYN requests scanning for accessible service listeners.'
-    },
-    {
-      id: 'AL-900',
-      time: '13:55:12',
-      type: 'SSH Brute Force',
-      source: '172.16.4.22',
-      destination: '10.0.0.5:22',
-      protocol: 'TCP',
-      risk: 'High',
-      status: 'Blocked',
-      mitre: 'T1110',
-      description: 'Exceeded threshold of 45 invalid credentials submissions per minute.'
-    },
-    {
-      id: 'AL-899',
-      time: '13:30:05',
-      type: 'Buffer Overflow Attempt',
-      source: '10.0.0.99',
-      destination: '10.0.0.2:8080',
-      protocol: 'UDP',
-      risk: 'Critical',
-      status: 'Blocked',
-      mitre: 'T1203',
-      description: 'Large malformed string injected into HTTP application header buffer.'
-    }
-  ]);
-
-  useEffect(() => {
-    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-    axios.get(`${apiBase}/api/dashboard`)
-      .then((res) => {
-        if (res.data) {
-          setStats((prev) => ({
-            ...prev,
-            totalTraffic: res.data.total_traffic || prev.totalTraffic,
-            threatsBlocked: res.data.threats_blocked || prev.threatsBlocked,
-            networkHealth: res.data.health || prev.networkHealth,
-            activeSims: res.data.active_sims || prev.activeSims
-          }));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   const navigateTo = (pageId) => {
     setCurrentPage(pageId);
-    setIsDrawerOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Page map — always renders exactly one component, no conditional hooks
   const renderPage = () => {
     switch (currentPage) {
-      case 'landing':
-        return <Landing navigateTo={navigateTo} theme={theme} />;
       case 'dashboard':
-        return <Dashboard stats={stats} setStats={setStats} alerts={alerts} navigateTo={navigateTo} theme={theme} />;
-      case 'alerts':
-        return <Alerts alerts={alerts} theme={theme} />;
+        return <Dashboard navigateTo={navigateTo} />;
       case 'traffic':
-        return <TrafficAnalyzer theme={theme} />;
-      case 'simulate':
-        return <Simulator theme={theme} />;
-      case 'risk':
-        return <RiskMatrix theme={theme} />;
+        return <TrafficAnalyzer navigateTo={navigateTo} />;
+      case 'alerts':
+        return <Alerts navigateTo={navigateTo} />;
       case 'health':
-        return <ModelHealth theme={theme} />;
-      case 'settings':
-        return <SettingsPage theme={theme} />;
+        return <ModelHealth navigateTo={navigateTo} />;
       default:
-        return <Landing navigateTo={navigateTo} theme={theme} />;
+        return <Dashboard navigateTo={navigateTo} />;
     }
   };
 
-  // Landing page renders full-bleed (no max-width constraint)
-  const isLanding = currentPage === 'landing';
-
-  // Locked strictly to Dark Cyber SOC Theme (#070b14)
-  const rootBg = '#070b14';
-  const rootColor = '#f8fafc';
-
   return (
-    <div className="dark" style={{ minHeight: '100vh', backgroundColor: rootBg, color: rootColor, fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
-      <Navbar
-        currentPage={currentPage}
-        navigateTo={navigateTo}
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-      />
-      <SidebarDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} currentPage={currentPage} navigateTo={navigateTo} />
-      {isLanding ? (
-        <>{renderPage()}</>
-      ) : (
-        <main className="animate-slide-up" style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.75rem 1.25rem' }}>
-          {renderPage()}
-        </main>
-      )}
+    <div
+      className="dark"
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#070b14',
+        color: '#f8fafc',
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {/* Top SOC Navbar */}
+      <Navbar currentPage={currentPage} navigateTo={navigateTo} />
+
+      {/* Main Content Area */}
+      <main style={{
+        flex: 1,
+        maxWidth: '1140px',
+        width: '100%',
+        margin: '0 auto',
+        padding: '1.5rem 1.25rem 2.5rem 1.25rem',
+        boxSizing: 'border-box'
+      }}>
+        {renderPage()}
+      </main>
+
+      {/* Footer */}
+      <footer style={{
+        borderTop: '1px solid #141f33',
+        padding: '0.85rem 1.5rem',
+        backgroundColor: '#05080f',
+        fontSize: '0.72rem',
+        color: '#64748b',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.5rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 700, color: '#94a3b8' }}>THREATLENS</span>
+          <span>•</span>
+          <span>AI-Powered Network Threat Detection System</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span>Dataset: NSL-KDD</span>
+          <span>Model: Random Forest (v1.0)</span>
+          <span style={{ color: '#10b981', fontWeight: 600 }}>● Operational</span>
+        </div>
+      </footer>
     </div>
   );
 }

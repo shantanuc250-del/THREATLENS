@@ -55,7 +55,7 @@ class Database:
                     description TEXT DEFAULT '',
                     probability REAL,
                     severity TEXT CHECK(severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'Low', 'Medium', 'High', 'Critical')),
-                    status TEXT DEFAULT 'Blocked',
+                    status TEXT DEFAULT 'Open',
                     analyst_notes TEXT DEFAULT '',
                     model_version TEXT,
                     raw_features TEXT,
@@ -145,7 +145,7 @@ class Database:
                         "description": "Massive volume of incomplete TCP handshakes starving socket buffer pools.",
                         "probability": 0.984,
                         "severity": "Critical",
-                        "status": "Blocked"
+                        "status": "Open"
                     },
                     {
                         "timestamp": (now - timedelta(minutes=7)).strftime("%H:%M:%S"),
@@ -173,7 +173,7 @@ class Database:
                         "description": "Exceeded threshold of 45 invalid credentials submissions per minute.",
                         "probability": 0.895,
                         "severity": "High",
-                        "status": "Blocked"
+                        "status": "Investigating"
                     },
                     {
                         "timestamp": (now - timedelta(minutes=48)).strftime("%H:%M:%S"),
@@ -187,7 +187,7 @@ class Database:
                         "description": "Large malformed string injected into HTTP application header buffer.",
                         "probability": 0.991,
                         "severity": "Critical",
-                        "status": "Blocked"
+                        "status": "Open"
                     }
                 ]
                 
@@ -255,7 +255,7 @@ class Database:
                 alert_data.get("description", "Anomalous network ingress flow flagged by ensemble model."),
                 float(alert_data.get("probability", 0.95)),
                 alert_data.get("severity", "High"),
-                alert_data.get("status", "Blocked"),
+                alert_data.get("status", "Open"),
                 alert_data.get("model_version", "v1.0"),
                 alert_data.get("raw_features", "{}"),
                 alert_data.get("feature_importances", "[]"),

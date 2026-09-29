@@ -186,7 +186,7 @@ def get_mitre_mapping(category, specific_type=""):
             "technique_id": "T1498.001",
             "technique_name": "Direct Network Flood",
             "tactic": "Impact",
-            "suggested_action": "Enable SYN Cookies at OS kernel level; inject immediate iptables drop rule for source subnet.",
+            "suggested_action": "Investigate source IP traffic volume; review socket buffer telemetry and apply rate-limiting if malicious.",
             "description": "Massive volume of incomplete TCP handshakes starving socket buffer pools and edge routers."
         }
     elif "PROBE" in cat or "SCAN" in spec:
@@ -194,7 +194,7 @@ def get_mitre_mapping(category, specific_type=""):
             "technique_id": "T1046",
             "technique_name": "Network Service Discovery",
             "tactic": "Discovery",
-            "suggested_action": "Apply dynamic firewall rate limiting; throttle sequential ICMP/TCP scan sweeps.",
+            "suggested_action": "Investigate sequential connection attempts and inspect host firewall logs for port scan activity.",
             "description": "Sequential rapid connection requests scanning for accessible service listeners and open ports."
         }
     elif "R2L" in cat or "BRUTE" in spec or "PASSWD" in spec:
@@ -202,7 +202,7 @@ def get_mitre_mapping(category, specific_type=""):
             "technique_id": "T1110.001",
             "technique_name": "Password Guessing / Brute Force",
             "tactic": "Credential Access",
-            "suggested_action": "Blacklist originating IP address; enforce multi-factor authentication and rotate credentials.",
+            "suggested_action": "Investigate failed authentication attempts; review account audit logs and enforce MFA if compromised.",
             "description": "Exceeded threshold of invalid credential submissions attempting unauthorized remote login."
         }
     elif "U2R" in cat or "ROOT" in spec or "OVERFLOW" in spec or "PRIVILEGE" in spec:
@@ -210,7 +210,7 @@ def get_mitre_mapping(category, specific_type=""):
             "technique_id": "T1203",
             "technique_name": "Exploitation for Client Execution",
             "tactic": "Privilege Escalation",
-            "suggested_action": "Isolate compromised host container; inspect memory dump and patch vulnerable endpoint service.",
+            "suggested_action": "Investigate payload parameters and endpoint memory state; inspect process execution tree for privilege escalation.",
             "description": "Large malformed payload injected into application memory buffer attempting root shell execution."
         }
     else:
@@ -218,6 +218,6 @@ def get_mitre_mapping(category, specific_type=""):
             "technique_id": "T1078",
             "technique_name": "Valid Accounts / Standard Traffic",
             "tactic": "Initial Access",
-            "suggested_action": "Permit through edge router; traffic conforms to verified perimeter security baseline.",
+            "suggested_action": "Permit traffic; flow conforms to standard benign baseline.",
             "description": "Standard network communication session with legitimate payload telemetry."
         }

@@ -215,7 +215,7 @@ class SimulationService:
                     "description": mitre_meta["description"],
                     "probability": prob,
                     "severity": severity,
-                    "status": "Blocked"
+                    "status": "Open"
                 })
                 
             # Log to DB
@@ -231,7 +231,7 @@ class SimulationService:
             self.stats["attacks_detected"] += len(alerts_to_insert)
             
             # Append log message
-            new_log = f"[{now_time}] Ingress burst: {count} {scenario.upper()} packets analyzed — threat neutralized."
+            new_log = f"[{now_time}] Demo burst: {count} {scenario.upper()} packets evaluated — threat flagged for SOC review."
             self.logs.insert(0, new_log)
             if len(self.logs) > 50:
                 self.logs.pop()
