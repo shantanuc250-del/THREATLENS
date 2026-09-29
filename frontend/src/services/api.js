@@ -1,21 +1,27 @@
 import axios from 'axios';
 
-const API_BASE = '/api';
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return `${envUrl.replace(/\/$/, '')}/api`;
+  }
+  return '/api';
+};
 
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: getBaseUrl(),
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Health
+// Health & Telemetry
 export const getHealth = () => api.get('/health');
 
-// Dashboard
+// Dashboard Overview & Timeline
 export const getDashboard = () => api.get('/dashboard');
 export const getTimeline = (range = '24h') => api.get(`/dashboard/timeline?range=${range}`);
 
-// Predictions
+// Single & Batch Prediction
 export const predictSingle = (data) => api.post('/predict', data);
 export const analyzeCSV = (file) => {
   const formData = new FormData();
@@ -26,17 +32,17 @@ export const analyzeCSV = (file) => {
   });
 };
 
-// Alerts
+// Incident Alerts
 export const getAlerts = (params = {}) => api.get('/alerts', { params });
 export const getAlert = (id) => api.get(`/alerts/${id}`);
 export const updateAlert = (id, data) => api.patch(`/alerts/${id}`, data);
 
-// Model
+// Model Metrics, Info & Drift
 export const getModelMetrics = () => api.get('/model/metrics');
 export const getModelInfo = () => api.get('/model/info');
 export const getModelDrift = () => api.get('/model/drift');
 
-// Simulation
+// Live Simulator Telemetry
 export const startSimulation = (rate = 50) => api.post('/simulation/start', { rate });
 export const stopSimulation = () => api.post('/simulation/stop');
 export const getSimulationStatus = () => api.get('/simulation/status');
