@@ -1,128 +1,75 @@
-# ThreatLens — AI-Powered Network Intrusion Detection & SOC Alerting Platform
+# 🛡️ ThreatLens — Intelligent Cyber Threat Detection & Simulation Platform
 
-> **"Catch the Attack the Signatures Miss"**
-
-ThreatLens is an enterprise-grade AI-powered Network Intrusion Detection System (NIDS) and Security Operations Center (SOC) alerting platform. It uses machine learning to analyze network traffic patterns, classify anomalies (Normal vs Attack), derive attack probabilities, and surface actionable security alerts to SOC analysts with model feature importances and interactive triage workflows.
+**ThreatLens** is an end-to-end network intrusion detection, real-time traffic analysis, and adversarial simulation dashboard. Powered by machine learning models trained on network flow benchmarks (NSL-KDD), ThreatLens classifies malicious network packets, assesses risk against the MITRE ATT&CK framework, and simulates real-world attack vectors in an interactive security operations center (SOC) dashboard.
 
 ---
 
-## 🌟 Key Features
+## 🚀 Key Features
 
-- **AI-Powered Anomaly Detection**: Random Forest model trained on network traffic telemetry (NSL-KDD benchmark dataset) for binary classification and risk scoring.
-- **Executive SOC Dashboard**: Real-time traffic KPIs, attack timeline charts, severity breakdowns, and recent alert feeds.
-- **Interactive Traffic Analyzer**: Batch CSV upload classification and single connection manual parameter testing.
-- **SOC Analyst Workflow**:
-  - Triage status tracking (`NEW`, `INVESTIGATING`, `RESOLVED`, `FALSE POSITIVE`).
-  - Automated Recommended Actions.
-  - Analyst Notes editor with database persistence.
-- **Model Performance & Health Monitoring**:
-  - Live Confusion Matrix, ROC-AUC curve, Precision, Recall, and F1 Score analytics.
-  - Population Stability Index (PSI) drift monitoring and model status tracking.
-- **Compact Collapsible Sidebar**: Icon-only navigation rail with tooltips by default (~68px) that expands smoothly (~250px) on toggle.
+* **Real-Time Packet Flow & Traffic Inspection:**
+  * Evaluate ingress network flow features (`protocol_type`, `service`, `flag`, `src_bytes`, `dst_bytes`, error rates, and packet rates).
+  * Instant classification into **Normal** traffic or specific threat classes (**DoS**, **Probe**, **R2L**, **U2R**) with confidence percentages.
+  * Direct triage and mitigation workflows (e.g., automated firewall drop rules).
+  * Graceful fallback mechanisms for mock inferences when backend services are offline.
 
----
+* **Adversarial Attack Simulator:**
+  * Interactive synthetic attack vector generator simulating:
+    * **DoS SYN Flood**
+    * **Port Sweep & Reconnaissance Probes**
+    * **Privilege Escalation**
+  * Real-time streaming terminal view displaying timestamps, spoofed IPs, and mitigation actions.
 
-## 🏗️ Technology Stack
+* **Live Telemetry & Performance Analytics:**
+  * Dynamic network throughput curves (packets/sec) updating in real time.
+  * Multi-class threat distribution breakdown and severity monitoring.
+  * Model health and drift telemetry tracking data-drift indices and inference latency.
 
-- **Frontend**: React, Vite, TailwindCSS v4, Lucide Icons, Recharts, Axios, React Router v7.
-- **Backend**: Python, Flask, SQLite / SQLAlchemy, Joblib.
-- **Machine Learning**: Scikit-Learn (Random Forest Classifier), Pandas, NumPy.
+* **CSV Batch Capture Scanner (Traffic Analyzer):**
+  * Client-side multi-row packet capture file upload and parsing.
+  * Interactive data preview table.
+  * Bulk prediction submission returning threat counts, clean traffic percentages, and breakdown metrics.
 
----
-
-## 🚀 Quick Start & Installation
-
-### 1. Prerequisites
-- Python 3.9+
-- Node.js 18+
-
-### 2. Backend Setup
-
-```bash
-cd backend
-python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On Linux/macOS:
-# source venv/bin/activate
-
-pip install -r requirements.txt
-python run.py
-```
-
-The Flask API backend will start at `http://localhost:5000`.
-
-### 3. Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The React frontend dev server will start at `http://localhost:5173`.
+* **Security Operations Center (SOC) Navigation:**
+  * Responsive, cyber-defense dark-mode theme.
+  * Slide-out hamburger navigation drawer alongside top navigation.
+  * Dedicated views: **Dashboard**, **Live Alerts Feed**, **Traffic Analyzer**, **Attack Simulator**, **MITRE ATT&CK Risk Matrix**, and **Model Health & Telemetry**.
 
 ---
 
-## 📊 Machine Learning Model Pipeline
+## 🛠️ Tech Stack & Architecture
 
-To re-train the Random Forest model on the NSL-KDD dataset:
-
-```bash
-cd ml
-python train.py
-python evaluate.py
-```
-
-The trained model binary is saved to `models/threatlens_model_v1.0.joblib`.
+* **Frontend:** React, Vite, TailwindCSS / Custom Cyber Theme CSS, SVG / Canvas Telemetry Visualizations
+* **Backend:** Python, Flask / FastAPI, REST API endpoints (`/api/predict`, `/api/simulation`, `/api/health`)
+* **Machine Learning:** Scikit-learn, NumPy, Pandas, Joblib (Models trained on NSL-KDD flow records)
+* **Deployment & CI:** Configured for Vercel deployment with serverless route wrappers (`api/index.py`, `vercel.json`)
 
 ---
 
-## 🛡️ Operational Safeguards Notice
+## 📂 Project Structure
 
-ThreatLens is a **decision-support platform** designed for security analysts:
-- It **NEVER** automatically blocks IP addresses or terminates active network connections.
-- It **NEVER** performs offensive actions against real systems.
-- Machine learning predictions are probabilistic indicators to assist SOC analysts in triage.
-
----
-
-## Interface
-
-### Routes
-
-| Route | Page |
-|---|---|
-| `/` | Public landing page (no console chrome) |
-| `/dashboard` | Executive SOC dashboard |
-| `/analyzer` | Network traffic analyzer |
-| `/alerts`, `/alerts/:id` | Alert queue and investigation view |
-| `/model` | Model performance analytics |
-| `/health` | Model health and drift monitor |
-| `/settings` | System info and appearance |
-
-### Themes
-
-The UI ships with four themes, switchable from the header dropdown or from
-**Settings → Appearance**:
-
-| Theme | Description |
-|---|---|
-| `midnight` | Default SOC blue, dark |
-| `obsidian` | Pure black, green terminal accents |
-| `aurora` | Violet night-shift palette |
-| `daylight` | Light, high contrast |
-
-The choice is stored in `localStorage` under `threatlens.theme` and falls back to
-the OS `prefers-color-scheme` setting on first visit. An inline script in
-`index.html` applies it before first paint to avoid a flash of the wrong palette.
-
-Every colour in the app comes from a CSS custom property defined in
-`src/index.css`; themes work by swapping those tokens on `<html data-theme>`.
-Charts are the one exception — Recharts needs literal colour strings, so
-components use the `useThemeTokens` hook from `src/theme/ThemeContext.jsx` to read
-the live computed values.
-
-**Adding a theme:** add a `[data-theme="yourname"]` block in `src/index.css`
-defining the same token set, then append an entry to the `THEMES` array in
-`src/theme/ThemeContext.jsx`. Nothing else needs to change.
+```text
+THREATLENS/
+├── api/                        # Serverless entry points for deployment
+│   ├── index.py                # Serverless Python wrapper
+│   └── requirements.txt        # Serverless backend dependencies
+├── backend/                    # Core Python backend
+│   ├── app/
+│   │   ├── routes/             # API routes (predict, alerts, health, simulation)
+│   │   ├── services/           # Prediction & simulation services
+│   │   └── utils/              # Validators and helpers
+│   ├── requirements.txt        # Backend dependencies
+│   └── run.py                  # Local development backend server
+├── data/                       # Benchmark flow datasets (NSL-KDD)
+├── frontend/                   # React + Vite frontend application
+│   ├── src/
+│   │   ├── components/         # Modals, Navbar, Sidebar drawer, UI elements
+│   │   ├── pages/              # Dashboard, Analyzer, Alerts, Simulator, Health
+│   │   ├── services/           # Frontend API clients
+│   │   ├── App.jsx             # Main router and view manager
+│   │   └── index.css           # Theme & cyber design tokens
+│   ├── package.json
+│   └── vite.config.js
+├── ml/                         # Training, preprocessing & drift analysis scripts
+├── models/                     # Serialized scikit-learn models & metadata
+├── vercel.json                 # Vercel deployment configuration
+└── README.md
