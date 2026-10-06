@@ -1,12 +1,1 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/run.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/run.py"
-    }
-  ]
-}
+{}
