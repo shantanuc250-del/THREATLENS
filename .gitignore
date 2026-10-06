@@ -18,9 +18,14 @@ build/
 *.db-journal
 *.db-wal
 *.db-shm
+backend/data/
+
 
 # Environment & OS
 .env
-.env.*
+.env.local
+.env.*.local
+# .env.production is intentionally tracked (public backend URL, no secrets)
+
 .DS_Store
 Thumbs.db

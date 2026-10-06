@@ -52,7 +52,13 @@ class Config:
     MAX_CSV_ROWS = 50000
     
     # CORS
-    CORS_ORIGINS = ["*"]
+    CORS_ORIGINS = [
+        "https://frontend-shaan13.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
     
     # Alert thresholds (configurable)
     ALERT_THRESHOLD = 0.50

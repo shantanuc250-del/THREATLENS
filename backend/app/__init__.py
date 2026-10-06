@@ -45,8 +45,24 @@ def create_app(config=None):
     else:
         app.config.from_object(Config)
     
-    # Enable CORS for all routes
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable CORS for all API routes.
+    # Explicit allowlist: production frontend + local dev origins.
+    # Add CORS_ORIGINS env var (comma-separated) to extend without code changes.
+    _default_origins = [
+        "https://frontend-shaan13.vercel.app",  # production frontend
+        "http://localhost:5173",                 # Vite dev server
+        "http://localhost:3000",                 # alternate dev port
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+    _extra = os.environ.get("CORS_ORIGINS", "")
+    if _extra:
+        _default_origins += [o.strip() for o in _extra.split(",") if o.strip()]
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": _default_origins}},
+        supports_credentials=True,
+    )
     
     # Initialize database
     db = Database(app.config["DATABASE_PATH"])
