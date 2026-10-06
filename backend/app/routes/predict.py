@@ -21,9 +21,10 @@ predict_bp = Blueprint("predict", __name__)
 def predict_single():
     """
     Predict a single network traffic record.
-    Returns prediction, confidence, attack_type, MITRE tags, and recommended action.
+    Returns ML prediction, confidence, attack_type, MITRE tags, recommended action,
+    enriched with IP intelligence (VPN/Proxy/Tor/Risk) and SOC risk correlation.
     """
-    from app import prediction_service, db
+    from app import prediction_service, db, ip_intelligence_service
     
     if not prediction_service or not prediction_service.is_loaded:
         return jsonify({
@@ -38,37 +39,84 @@ def predict_single():
     if not is_valid:
         return jsonify({"error": "Validation failed", "details": errors}), 400
     
+    # 1. Primary ML Random Forest Inference
     result = prediction_service.predict_single(sanitized_data)
     
     if "error" in result:
         return jsonify(result), 500
+
+    # 2. Extract & Parse IP and Port Information
+    raw_src_ip = data.get("source_ip") or sanitized_data.get("source_ip") or f"192.168.1.{random.randint(10, 200)}"
+    raw_dst_ip = data.get("destination_ip") or sanitized_data.get("destination_ip") or "10.0.0.1:80"
+    
+    clean_src_ip, src_port_extracted = (raw_src_ip, None)
+    clean_dst_ip, dst_port_extracted = (raw_dst_ip, 80)
+    
+    if ip_intelligence_service:
+        clean_src_ip, src_port_extracted = ip_intelligence_service.parse_ip_and_port(raw_src_ip)
+        clean_dst_ip, dst_port_extracted = ip_intelligence_service.parse_ip_and_port(raw_dst_ip)
         
-    # Auto-log to SQLite database
+    src_port = data.get("source_port") or data.get("src_port") or src_port_extracted or random.randint(49152, 65535)
+    dst_port = data.get("destination_port") or data.get("dst_port") or dst_port_extracted or 80
+
+    # 3. IP Intelligence Enrichment Layer (Separate from ML model)
+    if ip_intelligence_service:
+        ip_intel = ip_intelligence_service.get_ip_intelligence(clean_src_ip, port=int(src_port) if str(src_port).isdigit() else None)
+        risk_corr = ip_intelligence_service.calculate_risk_correlation(result, ip_intel)
+    else:
+        ip_intel = {
+            "ip": clean_src_ip,
+            "port": src_port,
+            "type": "Public/External",
+            "vpn": "unknown",
+            "proxy": "unknown",
+            "tor": "unknown",
+            "risk": "unknown",
+            "provider": "External ISP",
+            "country": "Unknown",
+            "previous_alerts": 0,
+            "source": "fallback"
+        }
+        risk_corr = {
+            "overall_risk": result.get("risk_level", "Medium"),
+            "ml_contribution": result.get("attack_type", "Flow evaluation"),
+            "ip_contribution": "Unresolved IP metadata",
+            "correlation_summary": "Risk derived from primary ML prediction."
+        }
+
+    # Attach IP Intelligence to Result
+    result["source_ip"] = clean_src_ip
+    result["destination_ip"] = clean_dst_ip
+    result["source_port"] = src_port
+    result["destination_port"] = dst_port
+    result["ip_type"] = ip_intel.get("type", "Public/External")
+    result["ip_intelligence"] = ip_intel
+    result["risk_correlation"] = risk_corr
+    result["overall_risk"] = risk_corr.get("overall_risk", result.get("risk_level", "Medium"))
+    
+    # 4. Auto-log to SQLite database
     now_iso = datetime.now(timezone.utc).isoformat()
     now_time = datetime.now(timezone.utc).strftime("%H:%M:%S")
     is_attack = result.get("prediction") == "Attack" or result.get("binary_prediction") == 1
-    
-    src_ip = sanitized_data.get("source_ip", f"192.168.1.{random.randint(10, 200)}")
-    dst_ip = sanitized_data.get("destination_ip", "10.0.0.1:80")
     protocol = sanitized_data.get("protocol_type", "tcp").upper()
     
     try:
         db.log_traffic_batch([{
             "timestamp": now_iso,
-            "source_ip": src_ip,
-            "destination_ip": dst_ip,
+            "source_ip": clean_src_ip,
+            "destination_ip": f"{clean_dst_ip}:{dst_port}",
             "protocol": protocol,
             "prediction": 1 if is_attack else 0,
             "probability": result["attack_probability"],
             "is_simulation": 0
         }])
         
-        # If threat detected, create alert
-        if is_attack:
+        # If threat detected or elevated risk, create SOC alert
+        if is_attack or risk_corr.get("overall_risk") in ("CRITICAL", "HIGH"):
             alert_id = db.create_alert({
                 "timestamp": now_time,
-                "source_ip": src_ip,
-                "destination_ip": dst_ip,
+                "source_ip": clean_src_ip,
+                "destination_ip": f"{clean_dst_ip}:{dst_port}",
                 "protocol": protocol,
                 "service": sanitized_data.get("service", "http"),
                 "attack_type": result["attack_type"],
@@ -76,9 +124,19 @@ def predict_single():
                 "mitre": result["mitre"],
                 "description": result["description"],
                 "probability": result["attack_probability"],
-                "severity": result["risk_level"],
+                "severity": result["overall_risk"].capitalize() if result["overall_risk"] else result["risk_level"],
                 "status": "Open",
                 "model_version": result["model_version"],
+                "source_port": src_port,
+                "destination_port": dst_port,
+                "ip_type": ip_intel.get("type", "Public/External"),
+                "vpn_detected": ip_intel.get("vpn", False),
+                "proxy_detected": ip_intel.get("proxy", False),
+                "tor_detected": ip_intel.get("tor", False),
+                "ip_risk": ip_intel.get("risk", "unknown"),
+                "ip_intelligence_source": ip_intel.get("source", ""),
+                "overall_risk": result["overall_risk"],
+                "correlation_summary": risk_corr.get("correlation_summary", ""),
                 "raw_features": json.dumps({k: v for k, v in sanitized_data.items() if k in [
                     "duration", "protocol_type", "service", "flag",
                     "src_bytes", "dst_bytes", "count", "srv_count", "serror_rate"

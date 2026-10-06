@@ -187,6 +187,59 @@ export default function AlertDetailModal({ alert = null, onClose = () => {}, onA
           </div>
         </div>
 
+        {/* IP Intelligence & Anonymization Details */}
+        <div style={{
+          backgroundColor: '#070b14',
+          borderRadius: '10px',
+          padding: '0.85rem 1rem',
+          border: '1px solid #141f33',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          fontSize: '0.76rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: '#38bdf8', textTransform: 'uppercase', fontWeight: 800 }}>
+              IP Intelligence & Anonymization Layer
+            </span>
+            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+              {alert.ip_intelligence_source || 'Security Layer'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+            <div style={{ backgroundColor: '#0d1628', padding: '0.45rem', borderRadius: '6px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '0.64rem', color: '#64748b', display: 'block' }}>IP Type</span>
+              <span style={{ fontWeight: 700, color: '#f8fafc' }}>{alert.ip_type || 'Public/External'}</span>
+            </div>
+            <div style={{ backgroundColor: '#0d1628', padding: '0.45rem', borderRadius: '6px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '0.64rem', color: '#64748b', display: 'block' }}>VPN</span>
+              <span style={{ fontWeight: 800, color: alert.vpn_detected ? '#f59e0b' : '#10b981' }}>
+                {alert.vpn_detected ? 'Detected' : 'No'}
+              </span>
+            </div>
+            <div style={{ backgroundColor: '#0d1628', padding: '0.45rem', borderRadius: '6px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '0.64rem', color: '#64748b', display: 'block' }}>Proxy / Tor</span>
+              <span style={{ fontWeight: 800, color: (alert.proxy_detected || alert.tor_detected) ? '#ef4444' : '#10b981' }}>
+                {alert.tor_detected ? 'Tor Exit' : alert.proxy_detected ? 'Proxy' : 'No'}
+              </span>
+            </div>
+            <div style={{ backgroundColor: '#0d1628', padding: '0.45rem', borderRadius: '6px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '0.64rem', color: '#64748b', display: 'block' }}>IP Risk</span>
+              <span style={{ fontWeight: 800, color: (alert.ip_risk === 'high' || alert.tor_detected) ? '#ef4444' : alert.ip_risk === 'medium' ? '#f59e0b' : '#10b981' }}>
+                {(alert.ip_risk || 'unknown').toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {alert.correlation_summary && (
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', borderTop: '1px solid #141f33', paddingTop: '0.4rem', lineHeight: 1.35 }}>
+              <strong style={{ color: '#cbd5e1' }}>Risk Correlation: </strong>
+              {alert.correlation_summary}
+            </div>
+          )}
+        </div>
+
         {/* Threat Description */}
         <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.4 }}>
           <strong style={{ color: '#f8fafc' }}>Threat Description: </strong>

@@ -42,6 +42,9 @@ export const getModelMetrics = () => api.get('/model/metrics');
 export const getModelInfo = () => api.get('/model/info');
 export const getModelDrift = () => api.get('/model/drift');
 
+// IP Intelligence & VPN Detection
+export const getIPIntelligence = (ip) => api.get(`/ip-intelligence/${encodeURIComponent(ip)}`);
+
 // Live Simulator Telemetry
 export const startSimulation = (rate = 50) => api.post('/simulation/start', { rate });
 export const stopSimulation = () => api.post('/simulation/stop');
