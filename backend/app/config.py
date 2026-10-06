@@ -19,25 +19,28 @@ class Config:
     
     # Model paths - robust resolution across root / backend deployment contexts
     _candidates_models = [
-        os.path.join(PROJECT_ROOT, "models"),
         os.path.join(BASE_DIR, "models"),
+        os.path.join(PROJECT_ROOT, "models"),
         os.path.join(os.getcwd(), "models"),
+        os.path.join(os.getcwd(), "backend", "models"),
     ]
-    MODELS_DIR = next((p for p in _candidates_models if os.path.exists(p)), os.path.join(PROJECT_ROOT, "models"))
+    MODELS_DIR = next((p for p in _candidates_models if os.path.exists(p)), os.path.join(BASE_DIR, "models"))
 
     _candidates_data = [
-        os.path.join(PROJECT_ROOT, "data"),
         os.path.join(BASE_DIR, "data"),
+        os.path.join(PROJECT_ROOT, "data"),
         os.path.join(os.getcwd(), "data"),
+        os.path.join(os.getcwd(), "backend", "data"),
     ]
-    DATA_DIR = next((p for p in _candidates_data if os.path.exists(p)), os.path.join(PROJECT_ROOT, "data"))
+    DATA_DIR = next((p for p in _candidates_data if os.path.exists(p)), os.path.join(BASE_DIR, "data"))
 
     _candidates_ml = [
-        os.path.join(PROJECT_ROOT, "ml"),
         os.path.join(BASE_DIR, "ml"),
+        os.path.join(PROJECT_ROOT, "ml"),
         os.path.join(os.getcwd(), "ml"),
+        os.path.join(os.getcwd(), "backend", "ml"),
     ]
-    ML_DIR = next((p for p in _candidates_ml if os.path.exists(p)), os.path.join(PROJECT_ROOT, "ml"))
+    ML_DIR = next((p for p in _candidates_ml if os.path.exists(p)), os.path.join(BASE_DIR, "ml"))
 
     
     # Model version

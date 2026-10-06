@@ -8,10 +8,15 @@ import sys
 _cur_dir = os.path.dirname(os.path.abspath(__file__))
 _backend_dir = os.path.dirname(_cur_dir)
 _root_dir = os.path.dirname(_backend_dir)
-_ml_dir = os.path.join(_root_dir, "ml")
+_ml_candidates = [
+    os.path.join(_backend_dir, "ml"),
+    os.path.join(_root_dir, "ml"),
+    os.path.join(os.getcwd(), "ml"),
+    os.path.join(os.getcwd(), "backend", "ml"),
+]
 
-for d in [_backend_dir, _root_dir, _ml_dir]:
-    if d not in sys.path:
+for d in [_backend_dir, _root_dir] + _ml_candidates:
+    if os.path.exists(d) and d not in sys.path:
         sys.path.insert(0, d)
 
 from flask import Flask

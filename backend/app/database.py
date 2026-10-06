@@ -31,8 +31,14 @@ class Database:
         """Get a database connection with row factory and WAL mode."""
         conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+        except (sqlite3.OperationalError, Exception):
+            pass
+        try:
+            conn.execute("PRAGMA foreign_keys=ON")
+        except (sqlite3.OperationalError, Exception):
+            pass
         return conn
     
     def init_db(self):
