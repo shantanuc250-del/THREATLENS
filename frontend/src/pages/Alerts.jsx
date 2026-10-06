@@ -60,6 +60,7 @@ export default function Alerts() {
     if (activeFilter === 'Critical') matchesFilter = sev === 'CRITICAL';
     else if (activeFilter === 'High') matchesFilter = sev === 'HIGH';
     else if (activeFilter === 'Medium') matchesFilter = sev === 'MEDIUM';
+    else if (activeFilter === 'VPN/Proxy') matchesFilter = Boolean(a.vpn_detected || a.proxy_detected || a.tor_detected);
     else if (activeFilter === 'Open') matchesFilter = stat === 'OPEN' || stat === 'FLAGGED';
     else if (activeFilter === 'Investigating') matchesFilter = stat === 'INVESTIGATING';
     else if (activeFilter === 'Resolved') matchesFilter = stat === 'RESOLVED';
@@ -167,7 +168,7 @@ export default function Alerts() {
 
         {/* Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-          {['All', 'Critical', 'High', 'Medium', 'Open', 'Investigating', 'Resolved'].map((f) => {
+          {['All', 'Critical', 'High', 'Medium', 'VPN/Proxy', 'Open', 'Investigating', 'Resolved'].map((f) => {
             const active = activeFilter === f;
             return (
               <button
@@ -204,7 +205,7 @@ export default function Alerts() {
             <thead>
               <tr style={{ backgroundColor: '#090e1a', color: '#64748b' }}>
                 <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Time</th>
-                <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Attack Type</th>
+                <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Attack & Origin IP</th>
                 <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Severity</th>
                 <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Confidence</th>
                 <th style={{ padding: '10px 14px', borderBottom: '1px solid #1a263e' }}>Status</th>
@@ -219,6 +220,9 @@ export default function Alerts() {
                   const conf = a.confidence || (a.probability ? `${(a.probability * 100).toFixed(1)}%` : '96.8%');
                   const rawStatus = a.status || 'Open';
                   const displayStatus = rawStatus === 'Blocked' ? 'Open' : rawStatus;
+                  const isVpn = Boolean(a.vpn_detected);
+                  const isProxy = Boolean(a.proxy_detected);
+                  const isTor = Boolean(a.tor_detected);
 
                   return (
                     <tr
@@ -237,14 +241,31 @@ export default function Alerts() {
                         <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{a.id}</span>
                       </td>
 
-                      {/* Attack Type */}
+                      {/* Attack Type & IP Provenance */}
                       <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc' }}>
-                          {a.type || a.attack_type || 'DoS Attack'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, color: '#f8fafc' }}>
+                            {a.type || a.attack_type || 'DoS Attack'}
+                          </span>
+                          {isVpn && (
+                            <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '1px 5px', borderRadius: '3px', backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                              VPN
+                            </span>
+                          )}
+                          {isProxy && (
+                            <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '1px 5px', borderRadius: '3px', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                              PROXY
+                            </span>
+                          )}
+                          {isTor && (
+                            <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '1px 5px', borderRadius: '3px', backgroundColor: 'rgba(168, 85, 247, 0.15)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                              TOR EXIT
+                            </span>
+                          )}
                         </div>
-                        <span style={{ fontSize: '0.68rem', color: '#38bdf8', fontFamily: 'monospace' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#38bdf8', fontFamily: 'monospace', marginTop: '2px' }}>
                           {a.source || a.source_ip || '192.168.1.100'} → {a.destination || a.destination_ip || '10.0.0.1'}
-                        </span>
+                        </div>
                       </td>
 
                       {/* Severity */}

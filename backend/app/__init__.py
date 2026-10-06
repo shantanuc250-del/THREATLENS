@@ -20,16 +20,18 @@ from app.config import Config
 from app.database import Database
 from app.services.prediction_service import PredictionService
 from app.services.simulation_service import SimulationService
+from app.services.ip_intelligence_service import IPIntelligenceService
 
 # Global instances
 db = None
 prediction_service = None
 simulation_service = None
+ip_intelligence_service = None
 
 
 def create_app(config=None):
     """Create and configure the Flask application."""
-    global db, prediction_service, simulation_service
+    global db, prediction_service, simulation_service, ip_intelligence_service
     
     app = Flask(__name__)
     
@@ -43,6 +45,9 @@ def create_app(config=None):
     
     # Initialize database
     db = Database(app.config["DATABASE_PATH"])
+
+    # Initialize IP intelligence service
+    ip_intelligence_service = IPIntelligenceService(db=db)
     
     # Initialize prediction service
     print("\n--- Loading ThreatLens ML Model Pipeline ---")
@@ -65,6 +70,7 @@ def create_app(config=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.model_info import model_bp
     from app.routes.simulation import simulation_bp
+    from app.routes.ip_intelligence import ip_intel_bp
     
     app.register_blueprint(health_bp)
     app.register_blueprint(predict_bp)
@@ -72,6 +78,7 @@ def create_app(config=None):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(model_bp)
     app.register_blueprint(simulation_bp)
+    app.register_blueprint(ip_intel_bp)
     
     # Centralized JSON Error handlers
     @app.errorhandler(404)

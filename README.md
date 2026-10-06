@@ -12,6 +12,12 @@
   * Direct triage and mitigation workflows (e.g., automated firewall drop rules).
   * Graceful fallback mechanisms for mock inferences when backend services are offline.
 
+* **Dual-Layer Threat Intelligence (ML Intrusion + IP Provenance):**
+  * **Layer 1 (ML Intrusion Classifier):** Random Forest classifier evaluating 41 NSL-KDD network-flow features (`protocol_type`, `service`, `flag`, byte counts, error rates).
+  * **Layer 2 (IP Intelligence & Anonymization Service):** Modular security layer analyzing ingress IP provenance, distinguishing Private LAN from Public WAN, and detecting commercial VPN gateways, anonymous HTTP/SOCKS proxies, and Tor Exit relays.
+  * **Deterministic Risk Correlation:** Explainable multi-factor risk scoring (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) combining ML flow anomaly severity with IP routing risk.
+  * *Note: The NSL-KDD Random Forest detects network anomalies from flow features; IP intelligence acts as a dedicated enrichment microservice.*
+
 * **Adversarial Attack Simulator:**
   * Interactive synthetic attack vector generator simulating:
     * **DoS SYN Flood**

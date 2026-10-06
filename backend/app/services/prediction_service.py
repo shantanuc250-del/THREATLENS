@@ -5,6 +5,7 @@ and structured confidence & MITRE telemetry.
 """
 import os
 import json
+import logging
 import time
 import joblib
 import pandas as pd
@@ -13,6 +14,8 @@ from datetime import datetime, timezone
 
 from config import FEATURE_NAMES, CATEGORICAL_FEATURES, NUMERIC_FEATURES
 from app.utils.validators import classify_attack, get_mitre_mapping, get_severity
+
+logger = logging.getLogger(__name__)
 
 
 class PredictionService:
@@ -24,6 +27,8 @@ class PredictionService:
         self.model_pipeline = None
         self.model_metadata = None
         self.metrics = None
+        # Cached mapping: original feature name -> global RF importance (computed once on load)
+        self._original_feature_importances = None
         self._load_model()
     
     def _load_model(self):
@@ -49,11 +54,136 @@ class PredictionService:
         if os.path.exists(metrics_path):
             with open(metrics_path, "r", encoding="utf-8") as f:
                 self.metrics = json.load(f)
+        
+        # Pre-compute the feature importance mapping once after load
+        if self.model_pipeline is not None:
+            self._original_feature_importances = self._compute_original_feature_importances()
     
     @property
     def is_loaded(self):
         return self.model_pipeline is not None
     
+    def _compute_original_feature_importances(self):
+        """
+        Map the Random Forest's feature_importances_ (over transformed space)
+        back to the original 41 NSL-KDD feature names.
+
+        The ColumnTransformer outputs features in this order:
+          1. StandardScaler columns: NUMERIC_FEATURES (38 features, 1-to-1)
+          2. OneHotEncoder columns: OHE expansion of CATEGORICAL_FEATURES
+             (protocol_type -> 3, service -> 70, flag -> 11 = 84 columns)
+        Total: 38 + 84 = 122 transformed features.
+
+        For categorical features, we SUM the importances of all their OHE
+        columns to get one importance score per original feature name.
+
+        Returns: list of {name, importance} sorted by importance descending.
+        """
+        try:
+            classifier = self.model_pipeline.named_steps["classifier"]
+            preprocessor = self.model_pipeline.named_steps["preprocessor"]
+            raw_importances = classifier.feature_importances_
+
+            # Build ordered list of transformed feature names matching the RF's input
+            ohe = preprocessor.named_transformers_["cat"]
+            ohe_feature_names = list(ohe.get_feature_names_out(CATEGORICAL_FEATURES))
+            all_transformed = NUMERIC_FEATURES + ohe_feature_names
+
+            if len(raw_importances) != len(all_transformed):
+                logger.warning(
+                    "feature_importances_ length (%d) != transformed features (%d). "
+                    "Skipping explanation pre-computation.",
+                    len(raw_importances), len(all_transformed)
+                )
+                return None
+
+            # Aggregate importances to original feature space
+            importance_map = {feat: 0.0 for feat in FEATURE_NAMES}
+            for idx, feat_name in enumerate(all_transformed):
+                if feat_name in importance_map:
+                    # Numeric feature: direct 1-to-1
+                    importance_map[feat_name] += raw_importances[idx]
+                else:
+                    # OHE column: "original_feature_value" -> map back to original feature
+                    for cat_feat in CATEGORICAL_FEATURES:
+                        prefix = cat_feat + "_"
+                        if feat_name.startswith(prefix):
+                            importance_map[cat_feat] += raw_importances[idx]
+                            break
+
+            # Sort descending and return as list
+            sorted_features = sorted(
+                importance_map.items(), key=lambda x: x[1], reverse=True
+            )
+            return [
+                {"name": name, "importance": float(round(imp, 6))}
+                for name, imp in sorted_features
+            ]
+        except Exception as e:
+            logger.error("Failed to compute original feature importances: %s", e)
+            return None
+
+    def generate_explanation(self, features_dict, top_n=8):
+        """
+        Generate an explainability payload for a single prediction.
+
+        Method: Random Forest global feature importance, mapped back to the
+        original 41 NSL-KDD feature names. For each top feature, the actual
+        value submitted for this traffic record is shown alongside the model's
+        global importance score.
+
+        IMPORTANT DISTINCTION:
+        - 'importance' is the GLOBAL importance of this feature across the
+          entire training dataset, not a causal explanation for this specific
+          packet. It shows which features the trained model relies on most.
+        - 'value' is the actual value submitted for THIS traffic record.
+
+        Returns None on any failure so callers can safely fall back.
+        """
+        if self._original_feature_importances is None:
+            return None
+
+        try:
+            def importance_label(score):
+                if score >= 0.08:
+                    return "High"
+                elif score >= 0.03:
+                    return "Medium"
+                elif score >= 0.005:
+                    return "Low"
+                else:
+                    return "Minimal"
+
+            top_features = self._original_feature_importances[:top_n]
+            explanation_features = []
+            for entry in top_features:
+                feat_name = entry["name"]
+                importance = entry["importance"]
+                # Fetch the actual value for this traffic record (or the default)
+                if feat_name in features_dict and features_dict[feat_name] not in (None, ""):
+                    raw_val = features_dict[feat_name]
+                else:
+                    raw_val = 0 if feat_name in NUMERIC_FEATURES else "other"
+                explanation_features.append({
+                    "name": feat_name,
+                    "value": raw_val,
+                    "importance": importance,
+                    "importance_label": importance_label(importance),
+                })
+
+            return {
+                "method": "Random Forest global feature importance (mapped to original features)",
+                "method_note": (
+                    "Importance scores reflect how much each feature contributed to the "
+                    "model's decisions across all training data (global, not per-packet). "
+                    "Values shown are the actual values submitted for this traffic record."
+                ),
+                "top_features": explanation_features,
+            }
+        except Exception as e:
+            logger.error("Failed to generate explanation: %s", e)
+            return None
+
     def predict_single(self, features_dict):
         """
         Predict a single traffic record with full MITRE & confidence enrichment.
@@ -93,6 +223,13 @@ class PredictionService:
             mitre_info = get_mitre_mapping(category, attack_name)
             severity = get_severity(attack_prob if is_attack else 0.0)
             confidence_pct = f"{(attack_prob if is_attack else normal_prob) * 100:.1f}%"
+
+            # Generate explainability payload (fault-tolerant: returns None on failure)
+            try:
+                explanation = self.generate_explanation(features_dict)
+            except Exception as exp_err:
+                logger.error("Explanation generation failed unexpectedly: %s", exp_err)
+                explanation = None
             
             return {
                 # Raw API fields
@@ -103,6 +240,7 @@ class PredictionService:
                 "normal_probability": round(normal_prob, 4),
                 "model_version": self.model_version,
                 "feature_importances": self._get_top_features(),
+                "explanation": explanation,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 
                 # UI / Diagnostic Display fields
@@ -155,7 +293,10 @@ class PredictionService:
             return None, f"Batch prediction failed: {str(e)}"
     
     def _get_top_features(self, n=10):
-        """Get top N feature importances from the model metrics."""
+        """Get top N feature importances from the pre-computed original feature mapping."""
+        if self._original_feature_importances:
+            return self._original_feature_importances[:n]
+        # Fall back to metrics file if live model data unavailable
         if self.metrics and "feature_importances" in self.metrics:
             return self.metrics["feature_importances"][:n]
         return []

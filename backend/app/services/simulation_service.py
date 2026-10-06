@@ -184,7 +184,13 @@ class SimulationService:
             # Generate 5-15 packets per loop iteration
             count = random.randint(5, 15)
             for _ in range(count):
-                src_ip = f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}"
+                # Use private subnet demo IPs and known test IPs
+                src_ip = random.choice([
+                    f"192.168.{random.randint(1, 254)}.{random.randint(1, 254)}",
+                    "198.51.100.25",  # Demo VPN test IP
+                    "185.220.101.5",  # Demo Tor test IP
+                    f"10.0.{random.randint(1, 50)}.{random.randint(2, 254)}"
+                ])
                 packet_data, atk_type, atk_cat, target_port = self._generate_synthetic_packet(scenario)
                 dest_ip = f"10.0.0.{random.randint(1, 10)}:{target_port}"
                 
@@ -192,6 +198,10 @@ class SimulationService:
                 prob = round(random.uniform(0.92, 0.99), 4)
                 severity = get_severity(prob)
                 mitre_meta = get_mitre_mapping(atk_cat, atk_type)
+
+                is_demo_vpn = src_ip == "198.51.100.25"
+                is_demo_tor = src_ip == "185.220.101.5"
+                ip_type = "Public/External" if (is_demo_vpn or is_demo_tor) else "Private/Internal"
                 
                 batch_records.append({
                     "timestamp": now_iso,
@@ -212,10 +222,20 @@ class SimulationService:
                     "attack_type": atk_type,
                     "attack_category": atk_cat,
                     "mitre_technique": mitre_meta["technique_id"],
-                    "description": mitre_meta["description"],
+                    "description": f"[DEMO TRAFFIC] {mitre_meta['description']}",
                     "probability": prob,
                     "severity": severity,
-                    "status": "Open"
+                    "status": "Open",
+                    "source_port": random.randint(49152, 65535),
+                    "destination_port": int(target_port) if str(target_port).isdigit() else 80,
+                    "ip_type": ip_type,
+                    "vpn_detected": is_demo_vpn,
+                    "proxy_detected": False,
+                    "tor_detected": is_demo_tor,
+                    "ip_risk": "high" if is_demo_tor else ("medium" if is_demo_vpn else "low"),
+                    "ip_intelligence_source": "Demo IP Intelligence (Simulation)",
+                    "overall_risk": "Critical" if is_demo_tor else severity,
+                    "correlation_summary": f"DEMO TRAFFIC: Synthetic {scenario.upper()} attack burst with {'Tor exit relay' if is_demo_tor else ('commercial VPN egress' if is_demo_vpn else 'internal LAN origin')}."
                 })
                 
             # Log to DB

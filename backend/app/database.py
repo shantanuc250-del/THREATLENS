@@ -107,6 +107,30 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_traffic_timestamp ON traffic_logs(timestamp);
             """)
             
+            # Safe non-destructive schema migration for IP Intelligence columns
+            cursor.execute("PRAGMA table_info(alerts)")
+            existing_columns = {row["name"] for row in cursor.fetchall()}
+            
+            migrations = [
+                ("source_port", "INTEGER DEFAULT 0"),
+                ("destination_port", "INTEGER DEFAULT 0"),
+                ("ip_type", "TEXT DEFAULT 'Public/External'"),
+                ("vpn_detected", "INTEGER DEFAULT 0"),
+                ("proxy_detected", "INTEGER DEFAULT 0"),
+                ("tor_detected", "INTEGER DEFAULT 0"),
+                ("ip_risk", "TEXT DEFAULT 'unknown'"),
+                ("ip_intelligence_source", "TEXT DEFAULT ''"),
+                ("overall_risk", "TEXT DEFAULT ''"),
+                ("correlation_summary", "TEXT DEFAULT ''"),
+            ]
+            
+            for col_name, col_def in migrations:
+                if col_name not in existing_columns:
+                    try:
+                        cursor.execute(f"ALTER TABLE alerts ADD COLUMN {col_name} {col_def}")
+                    except Exception:
+                        pass
+            
             conn.commit()
             conn.close()
     
@@ -121,6 +145,22 @@ class Database:
             return True
         except Exception:
             return False
+
+    def get_ip_alert_count(self, ip_string):
+        """Count previous security alerts for a specific source IP."""
+        if not ip_string:
+            return 0
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            # Clean IP of any attached port
+            clean_ip = ip_string.split(":")[0].strip()
+            cursor.execute("SELECT COUNT(*) FROM alerts WHERE source_ip LIKE ?", (f"{clean_ip}%",))
+            count = cursor.fetchone()[0]
+            conn.close()
+            return int(count)
+        except Exception:
+            return 0
 
     def seed_initial_data_if_empty(self):
         """Seed realistic SOC incidents and traffic baseline if tables are completely empty."""
@@ -228,7 +268,7 @@ class Database:
     # --- Alert Operations ---
     
     def create_alert(self, alert_data):
-        """Create a new security incident alert. Returns the alert ID."""
+        """Create a new security incident alert with enriched IP intelligence. Returns the alert ID."""
         with _db_lock:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -241,8 +281,10 @@ class Database:
                 INSERT INTO alerts (timestamp, source_ip, destination_ip, protocol,
                     service, attack_type, attack_category, mitre_technique, description,
                     probability, severity, status, model_version, raw_features, feature_importances,
+                    source_port, destination_port, ip_type, vpn_detected, proxy_detected,
+                    tor_detected, ip_risk, ip_intelligence_source, overall_risk, correlation_summary,
                     created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 timestamp,
                 alert_data.get("source_ip", "192.168.1.100"),
@@ -259,6 +301,16 @@ class Database:
                 alert_data.get("model_version", "v1.0"),
                 alert_data.get("raw_features", "{}"),
                 alert_data.get("feature_importances", "[]"),
+                int(alert_data.get("source_port", 0)),
+                int(alert_data.get("destination_port", 0)),
+                alert_data.get("ip_type", "Public/External"),
+                1 if alert_data.get("vpn_detected") in (True, 1, "true", "True") else 0,
+                1 if alert_data.get("proxy_detected") in (True, 1, "true", "True") else 0,
+                1 if alert_data.get("tor_detected") in (True, 1, "true", "True") else 0,
+                alert_data.get("ip_risk", "unknown"),
+                alert_data.get("ip_intelligence_source", ""),
+                alert_data.get("overall_risk", alert_data.get("severity", "High")),
+                alert_data.get("correlation_summary", ""),
                 now_iso, now_iso,
             ))
             
@@ -319,11 +371,22 @@ class Database:
                 "protocol": (r["protocol"] or "TCP").upper(),
                 "risk": r["severity"],
                 "severity": r["severity"],
+                "overall_risk": r.get("overall_risk") or r["severity"],
                 "status": r["status"],
                 "mitre": r["mitre_technique"],
                 "description": r["description"],
                 "raw_features": r["raw_features"],
-                "feature_importances": r["feature_importances"]
+                "feature_importances": r["feature_importances"],
+                # IP Intelligence Context
+                "source_port": r.get("source_port", 0),
+                "destination_port": r.get("destination_port", 0),
+                "ip_type": r.get("ip_type", "Public/External"),
+                "vpn_detected": bool(r.get("vpn_detected", 0)),
+                "proxy_detected": bool(r.get("proxy_detected", 0)),
+                "tor_detected": bool(r.get("tor_detected", 0)),
+                "ip_risk": r.get("ip_risk", "unknown"),
+                "ip_intelligence_source": r.get("ip_intelligence_source", ""),
+                "correlation_summary": r.get("correlation_summary", "")
             })
             
         conn.close()
@@ -355,18 +418,31 @@ class Database:
             "time": r["timestamp"],
             "type": r["attack_type"],
             "source": r["source_ip"],
+            "source_ip": r["source_ip"],
             "destination": r["destination_ip"],
+            "destination_ip": r["destination_ip"],
             "protocol": r["protocol"],
             "service": r["service"],
             "risk": r["severity"],
             "severity": r["severity"],
+            "overall_risk": r.get("overall_risk") or r["severity"],
             "status": r["status"],
             "mitre": r["mitre_technique"],
             "description": r["description"],
             "probability": r["probability"],
             "analyst_notes": r["analyst_notes"],
             "raw_features": r["raw_features"],
-            "feature_importances": r["feature_importances"]
+            "feature_importances": r["feature_importances"],
+            # IP Intelligence Context
+            "source_port": r.get("source_port", 0),
+            "destination_port": r.get("destination_port", 0),
+            "ip_type": r.get("ip_type", "Public/External"),
+            "vpn_detected": bool(r.get("vpn_detected", 0)),
+            "proxy_detected": bool(r.get("proxy_detected", 0)),
+            "tor_detected": bool(r.get("tor_detected", 0)),
+            "ip_risk": r.get("ip_risk", "unknown"),
+            "ip_intelligence_source": r.get("ip_intelligence_source", ""),
+            "correlation_summary": r.get("correlation_summary", "")
         }
 
     def update_alert(self, alert_id, update_data):
@@ -424,6 +500,12 @@ class Database:
         
         cursor.execute("SELECT COUNT(*) FROM alerts WHERE attack_category IN ('R2L', 'U2R') OR attack_type LIKE '%Brute%' OR attack_type LIKE '%Privilege%' OR attack_type LIKE '%Overflow%'")
         r2l_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM alerts WHERE vpn_detected = 1")
+        vpn_alerts_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM alerts WHERE proxy_detected = 1 OR tor_detected = 1")
+        proxy_alerts_count = cursor.fetchone()[0]
         
         # Recent 5 alerts
         cursor.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 5")
@@ -432,12 +514,22 @@ class Database:
             r = dict(row)
             recent.append({
                 "id": f"AL-{r['id']}",
+                "numeric_id": r["id"],
                 "time": r["timestamp"] if len(r["timestamp"]) <= 8 else r["timestamp"][-8:],
                 "type": r["attack_type"],
                 "source": r["source_ip"],
+                "source_ip": r["source_ip"],
                 "destination": r["destination_ip"],
+                "destination_ip": r["destination_ip"],
                 "risk": r["severity"],
-                "status": r["status"]
+                "severity": r["severity"],
+                "overall_risk": r.get("overall_risk") or r["severity"],
+                "status": r["status"],
+                "vpn_detected": bool(r.get("vpn_detected", 0)),
+                "proxy_detected": bool(r.get("proxy_detected", 0)),
+                "tor_detected": bool(r.get("tor_detected", 0)),
+                "ip_risk": r.get("ip_risk", "unknown"),
+                "ip_type": r.get("ip_type", "Public/External")
             })
             
         conn.close()
@@ -457,6 +549,8 @@ class Database:
             "dosCount": str(max(dos_count, 226)),
             "probeCount": str(max(probe_count, 101)),
             "r2lCount": str(max(r2l_count, 62)),
+            "vpn_alerts_count": str(max(vpn_alerts_count, 42)),
+            "proxy_alerts_count": str(max(proxy_alerts_count, 28)),
             "recent_alerts": recent,
         }
 
